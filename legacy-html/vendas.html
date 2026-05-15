@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendas | Nicolini Armarinho</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        
+        <!-- Mobile Overlay -->
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img id="store-logo-sidebar" src="" alt="Logo" style="display: none; max-width: 24px; max-height: 24px; border-radius: 4px;">
+                    <i id="store-icon-sidebar" data-lucide="scissors"></i>
+                    <span id="store-name-sidebar">Armarinho</span>
+                </div>
+                <button class="sidebar-close" id="sidebar-close">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="index.html" class="nav-item">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="vendas.html" class="nav-item active">
+                    <i data-lucide="trending-up"></i>
+                    <span>Vendas</span>
+                </a>
+                <a href="fornecedores.html" class="nav-item">
+                    <i data-lucide="truck"></i>
+                    <span>Fornecedores</span>
+                </a>
+                <a href="compras.html" class="nav-item">
+                    <i data-lucide="shopping-bag"></i>
+                    <span>Compras</span>
+                </a>
+                <a href="cartoes.html" class="nav-item">
+                    <i data-lucide="credit-card"></i>
+                    <span>Cartões</span>
+                </a>
+                <a href="configuracoes.html" class="nav-item">
+                    <i data-lucide="settings"></i>
+                    <span>Configurações</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="menu-toggle" id="menu-toggle">
+                        <i data-lucide="menu"></i>
+                    </button>
+                    <div class="topbar-title">
+                        <h1 id="page-title">Gestão de Vendas</h1>
+                        <p id="page-subtitle" class="text-muted">Registre e acompanhe suas entradas</p>
+                    </div>
+                </div>
+                <div class="topbar-actions">
+                    <button class="btn btn-outline" style="border-color: #10b981; color: #10b981;" onclick="window.Vendas.exportarVendas()">
+                        <i data-lucide="file-spreadsheet"></i>
+                        <span class="btn-text">Exportar Excel</span>
+                    </button>
+                    <button class="btn btn-primary" onclick="Shared.openModal('modal-venda')">
+                        <i data-lucide="plus"></i>
+                        <span class="btn-text">Nova Venda</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <div class="card">
+                    <div class="card-header filter-header">
+                        <div class="filter-group">
+                            <label>Filtrar por Mês:</label>
+                            <select id="filter-month" class="filter-input custom-select">
+                                <option value="">Todos os Meses</option>
+                            </select>
+                        </div>
+                        <div class="filter-actions">
+                            <button class="btn btn-outline btn-sm" onclick="Vendas.clearFilters()">Limpar Filtros</button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="table-vendas">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Valor</th>
+                                    <th class="text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Venda -->
+    <div class="modal-overlay hidden" id="modal-venda">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Registrar Venda</h3>
+                <button class="btn-close" onclick="Shared.closeModal('modal-venda')"><i data-lucide="x"></i></button>
+            </div>
+            <form id="form-venda">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Valor da Venda (R$)</label>
+                        <input type="number" id="venda-valor" step="0.01" min="0" required placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Data</label>
+                        <input type="date" id="venda-data" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="Shared.closeModal('modal-venda')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Venda</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/store.js"></script>
+    <script type="module" src="js/shared.js"></script>
+    <script type="module" src="js/vendas.js"></script>
+</body>
+</html>

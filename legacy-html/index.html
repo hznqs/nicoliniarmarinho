@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Nicolini Armarinho</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+    <div class="app-container">
+        
+        <!-- Mobile Overlay -->
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img id="store-logo-sidebar" src="" alt="Logo" style="display: none; max-width: 24px; max-height: 24px; border-radius: 4px;">
+                    <i id="store-icon-sidebar" data-lucide="scissors"></i>
+                    <span id="store-name-sidebar">Armarinho</span>
+                </div>
+                <button class="sidebar-close" id="sidebar-close">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="index.html" class="nav-item active">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="vendas.html" class="nav-item">
+                    <i data-lucide="trending-up"></i>
+                    <span>Vendas</span>
+                </a>
+                <a href="fornecedores.html" class="nav-item">
+                    <i data-lucide="truck"></i>
+                    <span>Fornecedores</span>
+                </a>
+                <a href="compras.html" class="nav-item">
+                    <i data-lucide="shopping-bag"></i>
+                    <span>Compras</span>
+                </a>
+                <a href="cartoes.html" class="nav-item">
+                    <i data-lucide="credit-card"></i>
+                    <span>Cartões</span>
+                </a>
+                <a href="configuracoes.html" class="nav-item">
+                    <i data-lucide="settings"></i>
+                    <span>Configurações</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="menu-toggle" id="menu-toggle">
+                        <i data-lucide="menu"></i>
+                    </button>
+                    <div class="topbar-title">
+                        <h1 id="page-title">Visão Geral</h1>
+                        <p id="page-subtitle" class="text-muted">Acompanhe seus resultados hoje</p>
+                    </div>
+                </div>
+                <div class="topbar-actions">
+                    <button class="btn btn-outline" onclick="Shared.exportData()">
+                        <i data-lucide="download"></i>
+                        <span>Exportar Dados</span>
+                    </button>
+                    <a href="vendas.html" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        <span>Nova Venda</span>
+                    </a>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Vendas (Mês)</span>
+                            <div class="stat-icon bg-green"><i data-lucide="dollar-sign"></i></div>
+                        </div>
+                        <h3 class="stat-value" id="dash-vendas-mes">R$ 0,00</h3>
+                        <div class="stat-trend positive" id="dash-vendas-trend">
+                            <i data-lucide="arrow-up-right"></i>
+                            <span>Entradas recentes</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Compras (Mês)</span>
+                            <div class="stat-icon bg-red"><i data-lucide="shopping-bag"></i></div>
+                        </div>
+                        <h3 class="stat-value" id="dash-compras-mes">R$ 0,00</h3>
+                        <div class="stat-trend negative" id="dash-compras-trend">
+                            <i data-lucide="arrow-down-right"></i>
+                            <span>Gastos fornecedores</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Saldo</span>
+                            <div class="stat-icon bg-blue"><i data-lucide="wallet"></i></div>
+                        </div>
+                        <h3 class="stat-value" id="dash-saldo">R$ 0,00</h3>
+                        <div class="stat-trend neutral">
+                            <span>Lucro/Prejuízo Mensal</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Faturas Atuais</span>
+                            <div class="stat-icon bg-purple"><i data-lucide="credit-card"></i></div>
+                        </div>
+                        <h3 class="stat-value" id="dash-faturas">R$ 0,00</h3>
+                        <div class="stat-trend neutral">
+                            <span>Soma do mês vigente</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="chart-card card">
+                        <div class="card-header">
+                            <h3>Receitas vs Despesas (Últimos 6 meses)</h3>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="chart-fluxo"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card card">
+                        <div class="card-header">
+                            <h3>Vendas Diárias (Últimos 7 dias)</h3>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="chart-vendas-dia"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/store.js"></script>
+    <script type="module" src="js/shared.js"></script>
+    <script type="module" src="js/dashboard.js"></script>
+</body>
+</html>

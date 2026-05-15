@@ -1,0 +1,432 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary:       var(--app-primary-hex);
+  --color-primary-hover: var(--app-primary-hover-hex);
+  --color-primary-glow:  var(--app-primary-glow);
+
+  --color-zinc-950: var(--app-bg-base);
+  --color-zinc-900: var(--app-bg-surface);
+  --color-zinc-800: var(--app-border);
+  --color-zinc-700: var(--app-border-light);
+
+  --font-sans:   "Inter", sans-serif;
+  --font-outfit: "Outfit", sans-serif;
+
+  --shadow-premium: var(--app-card-shadow, 0 4px 24px rgba(0,0,0,0.5));
+  --shadow-glow:    0 0 20px var(--app-primary-glow, rgba(245,158,11,0.2));
+}
+
+/* ── Default CSS Variables ── */
+@layer base {
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden;
+  }
+
+  * {
+    min-width: 0;
+  }
+
+  :root {
+    --app-primary-hex:       #f59e0b;
+    --app-primary-hover-hex: #d97706;
+    --app-primary-glow:      rgba(245,158,11,0.2);
+    --app-primary-rgb:       245,158,11;
+    --app-primary-text:      #09090b;
+
+    --app-bg-base:       #09090b;
+    --app-bg-surface:    #1e1e21;
+    --app-bg-surface-2:  #27272a;
+    --app-border:        #2e2e32;
+    --app-border-light:  #3f3f46;
+
+    --app-card-bg:       #1e1e21;
+    --app-card-border:   #2e2e32;
+    --app-card-shadow:   0 4px 24px rgba(0,0,0,0.5), 0 1px 3px rgba(0,0,0,0.4);
+
+    --app-input-bg:      #18181b;
+    --app-input-border:  #27272a;
+    --app-hover-overlay: #27272a;
+    --app-scrollbar:     #3f3f46;
+    --app-chart-grid:    #27272a;
+
+    --app-text-primary:     #f4f4f5;
+    --app-text-secondary:   #d4d4d8;
+    --app-text-muted:       rgba(160,160,170,1);
+    --app-text-faint:       rgba(120,120,130,1);
+    --app-text-placeholder: rgba(120,120,130,1);
+    --app-subtle-overlay:   rgba(255,255,255,0.06);
+
+    --app-density:          1;
+    --app-card-padding:     24px;
+    --app-section-padding:  32px;
+    --app-table-cell-y:     16px;
+    --app-page-padding:     32px;
+    --app-control-y:        11px;
+    --app-text-sm:          14px;
+
+    --sidebar-bg-color:    #18181b;
+    --sidebar-bg-raw:      #18181b;
+    --sidebar-bg-rgb:      24,24,27;
+    --sidebar-border-color:#27272a;
+    --sidebar-text-color:  #f4f4f5;
+    --sidebar-muted-color: rgba(160,160,170,0.6);
+    --sidebar-hover-bg:    rgba(255,255,255,0.07);
+    --sidebar-blur:        none;
+    --sidebar-opacity:     1;
+  }
+
+  /* ── Body: fully adaptive ── */
+  body {
+    background-color: var(--app-bg-base);
+    color: var(--app-text-primary);
+    font-family: var(--app-font, "Inter", sans-serif);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at top right, rgba(var(--app-primary-rgb),0.07), transparent 40%),
+      radial-gradient(circle at bottom left, rgba(var(--app-primary-rgb),0.03), transparent 40%);
+  }
+
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
+  }
+
+  /* Adaptive tailwind overrides */
+  .text-white,
+  .text-zinc-100,
+  .text-zinc-200  { color: var(--app-text-primary) !important; }
+  .text-zinc-300  { color: var(--app-text-secondary) !important; }
+  .text-zinc-400,
+  .text-zinc-500  { color: var(--app-text-muted) !important; }
+  .text-zinc-600,
+  .text-zinc-700  { color: var(--app-text-faint) !important; }
+  .text-black,
+  .text-zinc-950  { color: var(--app-primary-text) !important; }
+  .bg-zinc-950    { background-color: var(--app-bg-base)    !important; }
+  .bg-zinc-900    { background-color: var(--app-bg-surface)  !important; }
+  .bg-white\/5,
+  [class*="bg-white/5"] { background-color: var(--app-subtle-overlay) !important; }
+  .border-zinc-800{ border-color: var(--app-border)          !important; }
+  .border-zinc-700{ border-color: var(--app-border-light)    !important; }
+}
+
+/* ── Card Component ── */
+@layer components {
+
+  /* Main card — distinct surface with border + shadow */
+  .glass-card,
+  [class*="bg-zinc-900/50"],
+  [class*="bg-zinc-900"] {
+    background-color: var(--app-card-bg) !important;
+    border-color: var(--app-card-border) !important;
+    box-shadow: var(--app-card-shadow) !important;
+  }
+
+  .app-shell main {
+    padding: clamp(1rem, var(--app-page-padding), 2.75rem) !important;
+  }
+
+  .app-shell main header {
+    min-width: 0;
+  }
+
+  .app-shell .p-6 {
+    padding: var(--app-card-padding) !important;
+  }
+
+  .app-shell .p-8 {
+    padding: var(--app-section-padding) !important;
+  }
+
+  .app-shell th.px-6,
+  .app-shell td.px-6 {
+    padding-left: var(--app-card-padding) !important;
+    padding-right: var(--app-card-padding) !important;
+  }
+
+  .app-shell th.py-4,
+  .app-shell td.py-4 {
+    padding-top: var(--app-table-cell-y) !important;
+    padding-bottom: var(--app-table-cell-y) !important;
+  }
+
+  .app-shell .space-y-8 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: calc(2rem * var(--app-density)) !important;
+  }
+
+  .app-shell .gap-8 {
+    gap: calc(2rem * var(--app-density)) !important;
+  }
+
+  .app-shell .gap-6 {
+    gap: calc(1.5rem * var(--app-density)) !important;
+  }
+
+  .responsive-table {
+    width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .responsive-table table {
+    min-width: 720px;
+  }
+
+  /* Nested surface (section headers inside cards, secondary panels) */
+  .bg-zinc-800\/20,
+  [class*="bg-zinc-800/20"] {
+    background-color: var(--app-hover-overlay) !important;
+  }
+
+  /* Inputs */
+  input:not([type="color"]):not([type="file"]):not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    background-color: var(--app-input-bg) !important;
+    color:            var(--app-text-primary) !important;
+    border-color:     var(--app-input-border) !important;
+    padding-top:      var(--app-control-y);
+    padding-bottom:   var(--app-control-y);
+    min-height:       44px;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--app-text-placeholder) !important;
+  }
+
+  label {
+    color: var(--app-text-muted);
+  }
+
+  .app-shell .text-sm,
+  .app-shell input,
+  .app-shell select,
+  .app-shell textarea,
+  .app-shell button {
+    font-size: var(--app-text-sm) !important;
+  }
+
+  .app-shell .text-xs {
+    font-size: max(11px, calc(var(--app-text-sm) - 2px)) !important;
+  }
+
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    outline: none;
+    touch-action: manipulation;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    box-shadow: 0 0 0 3px rgba(var(--app-primary-rgb), 0.25);
+  }
+
+  /* Table rows */
+  tr {
+    border-color: var(--app-border) !important;
+  }
+
+  /* Hover rows */
+  tr:hover {
+    background-color: var(--app-hover-overlay) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .app-shell main {
+    padding: 1rem !important;
+  }
+
+  .app-shell main header {
+    align-items: stretch !important;
+  }
+
+  .app-shell main header > div:last-child {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .app-shell main header > div:last-child > button,
+  .app-shell main header > div:last-child > .inline-flex {
+    flex: 1 1 150px;
+  }
+}
+
+@media (max-width: 760px) {
+  .responsive-table {
+    overflow-x: visible;
+  }
+
+  .responsive-table table,
+  .responsive-table thead,
+  .responsive-table tbody,
+  .responsive-table tfoot,
+  .responsive-table tr,
+  .responsive-table th,
+  .responsive-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .responsive-table table {
+    min-width: 0;
+  }
+
+  .responsive-table thead {
+    display: none;
+  }
+
+  .responsive-table tbody {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .responsive-table tbody tr {
+    border: 1px solid var(--app-card-border);
+    border-radius: var(--radius-xl, 16px);
+    background: var(--app-card-bg);
+    box-shadow: var(--app-card-shadow);
+    overflow: hidden;
+  }
+
+  .responsive-table tbody td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem !important;
+    border-bottom: 1px solid var(--app-border);
+    text-align: right !important;
+  }
+
+  .responsive-table tbody td:last-child {
+    border-bottom: 0;
+  }
+
+  .responsive-table tbody td::before {
+    content: attr(data-label);
+    color: var(--app-text-muted);
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    text-align: left;
+    flex: 0 0 auto;
+  }
+
+  .responsive-table tbody td:not([data-label]) {
+    justify-content: center;
+    text-align: center !important;
+  }
+
+  .responsive-table tbody td:not([data-label])::before {
+    content: none;
+  }
+
+  .responsive-table tbody td[data-label="Ações"] > div {
+    width: 100%;
+    justify-content: flex-end;
+    opacity: 1 !important;
+  }
+
+  .responsive-table tfoot tr {
+    border-top: 1px solid var(--app-border);
+  }
+
+  .responsive-table tfoot td {
+    padding: 0.75rem 1rem !important;
+    text-align: left !important;
+  }
+}
+
+@media (max-width: 640px) {
+  input:not([type="color"]):not([type="file"]):not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  .app-shell .rounded-3xl {
+    border-radius: var(--radius-2xl, 20px) !important;
+  }
+
+  .app-shell .p-6,
+  .app-shell .p-8 {
+    padding: 1rem !important;
+  }
+
+  .app-shell .grid {
+    min-width: 0;
+  }
+
+  .app-shell .max-w-4xl,
+  .app-shell .max-w-7xl {
+    max-width: 100%;
+  }
+
+  .app-shell .text-3xl {
+    font-size: 1.65rem !important;
+    line-height: 2rem !important;
+  }
+
+  .app-shell .text-2xl {
+    font-size: 1.35rem !important;
+    line-height: 1.75rem !important;
+  }
+
+  .app-shell .flex.items-center.gap-3 {
+    min-width: 0;
+  }
+
+  .app-shell main header {
+    flex-direction: column !important;
+  }
+
+  .app-shell form .justify-end {
+    flex-wrap: wrap;
+  }
+
+  .app-shell form .justify-end > button {
+    flex: 1 1 100%;
+  }
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--app-bg-base); }
+::-webkit-scrollbar-thumb {
+  background: var(--app-scrollbar);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--app-border-light);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

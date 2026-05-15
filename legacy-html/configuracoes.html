@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurações | ERP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        
+        <!-- Mobile Overlay -->
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img id="store-logo-sidebar" src="" alt="Logo" style="display: none; max-width: 24px; max-height: 24px; border-radius: 4px;">
+                    <i id="store-icon-sidebar" data-lucide="scissors"></i>
+                    <span id="store-name-sidebar">Armarinho</span>
+                </div>
+                <button class="sidebar-close" id="sidebar-close">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="index.html" class="nav-item">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="vendas.html" class="nav-item">
+                    <i data-lucide="trending-up"></i>
+                    <span>Vendas</span>
+                </a>
+                <a href="fornecedores.html" class="nav-item">
+                    <i data-lucide="truck"></i>
+                    <span>Fornecedores</span>
+                </a>
+                <a href="compras.html" class="nav-item">
+                    <i data-lucide="shopping-bag"></i>
+                    <span>Compras</span>
+                </a>
+                <a href="cartoes.html" class="nav-item">
+                    <i data-lucide="credit-card"></i>
+                    <span>Cartões</span>
+                </a>
+                <a href="configuracoes.html" class="nav-item active">
+                    <i data-lucide="settings"></i>
+                    <span>Configurações</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="menu-toggle" id="menu-toggle">
+                        <i data-lucide="menu"></i>
+                    </button>
+                    <div class="topbar-title">
+                        <h1 id="page-title">Configurações</h1>
+                        <p id="page-subtitle" class="text-muted">Personalize sua loja e sistema</p>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Perfil da Loja</h3>
+                    </div>
+                    <form id="form-config" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem;">
+                        <div class="grid-2-cols">
+                            <div class="form-group">
+                                <label>Nome da Loja</label>
+                                <input type="text" id="config-nome" placeholder="Ex: Armarinho do Seu João" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Logo da Loja (Do seu computador)</label>
+                                <div class="upload-container" style="display: flex; align-items: center; gap: 1rem;">
+                                    <input type="file" id="config-logo-file" accept="image/*" style="display: none;">
+                                    <button type="button" id="btn-upload" class="btn btn-outline">
+                                        <i data-lucide="upload-cloud"></i> Escolher Imagem
+                                    </button>
+                                    <img id="logo-preview" src="" style="display: none; width: 40px; height: 40px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border-light);">
+                                    <button type="button" id="btn-remove-logo" class="btn btn-danger" style="display: none; padding: 0.5rem;">
+                                        <i data-lucide="trash-2"></i>
+                                    </button>
+                                </div>
+                                <span class="text-muted" style="font-size: 0.75rem; margin-top: 0.5rem; display: block;">Será redimensionada automaticamente para o menu.</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary">
+                                <i data-lucide="save"></i> Salvar Configurações
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/store.js"></script>
+    <script type="module" src="js/shared.js"></script>
+    <script type="module" src="js/configuracoes.js"></script>
+</body>
+</html>

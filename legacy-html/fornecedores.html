@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fornecedores | Nicolini Armarinho</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        
+        <!-- Mobile Overlay -->
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img id="store-logo-sidebar" src="" alt="Logo" style="display: none; max-width: 24px; max-height: 24px; border-radius: 4px;">
+                    <i id="store-icon-sidebar" data-lucide="scissors"></i>
+                    <span id="store-name-sidebar">Armarinho</span>
+                </div>
+                <button class="sidebar-close" id="sidebar-close">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="index.html" class="nav-item">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="vendas.html" class="nav-item">
+                    <i data-lucide="trending-up"></i>
+                    <span>Vendas</span>
+                </a>
+                <a href="fornecedores.html" class="nav-item active">
+                    <i data-lucide="truck"></i>
+                    <span>Fornecedores</span>
+                </a>
+                <a href="compras.html" class="nav-item">
+                    <i data-lucide="shopping-bag"></i>
+                    <span>Compras</span>
+                </a>
+                <a href="cartoes.html" class="nav-item">
+                    <i data-lucide="credit-card"></i>
+                    <span>Cartões</span>
+                </a>
+                <a href="configuracoes.html" class="nav-item">
+                    <i data-lucide="settings"></i>
+                    <span>Configurações</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="menu-toggle" id="menu-toggle">
+                        <i data-lucide="menu"></i>
+                    </button>
+                    <div class="topbar-title">
+                        <h1 id="page-title">Meus Fornecedores</h1>
+                        <p id="page-subtitle" class="text-muted">Controle de contatos e abastecimento</p>
+                    </div>
+                </div>
+                <div class="topbar-actions">
+                    <button class="btn btn-outline" style="border-color: #10b981; color: #10b981;" onclick="window.Fornecedores.exportarFornecedores()">
+                        <i data-lucide="file-spreadsheet"></i>
+                        <span class="btn-text">Exportar Excel</span>
+                    </button>
+                    <button class="btn btn-primary" onclick="Shared.openModal('modal-fornecedor')">
+                        <i data-lucide="plus"></i>
+                        <span class="btn-text">Novo Fornecedor</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <div class="card">
+                    <div class="card-header flex-between">
+                        <h3>Lista de Fornecedores</h3>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="table-fornecedores">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Descrição / Observação</th>
+                                    <th class="text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Fornecedor -->
+    <div class="modal-overlay hidden" id="modal-fornecedor">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Novo Fornecedor</h3>
+                <button class="btn-close" onclick="Shared.closeModal('modal-fornecedor')"><i data-lucide="x"></i></button>
+            </div>
+            <form id="form-fornecedor">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Nome do Fornecedor</label>
+                        <input type="text" id="forn-nome" required placeholder="Ex: Atacadão dos Fios">
+                    </div>
+                    <div class="form-group">
+                        <label>Descrição / Observação</label>
+                        <textarea id="forn-descricao" rows="3" placeholder="Ex: Fornecedor de linhas e agulhas, entrega nas terças..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="Shared.closeModal('modal-fornecedor')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Fornecedor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/store.js"></script>
+    <script type="module" src="js/shared.js"></script>
+    <script type="module" src="js/fornecedores.js"></script>
+</body>
+</html>

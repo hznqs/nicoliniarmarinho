@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Nicolini Armarinho</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        body.login-page {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: #000;
+            background-image: radial-gradient(circle at top right, rgba(245, 158, 11, 0.15), transparent 40%),
+                              radial-gradient(circle at bottom left, rgba(245, 158, 11, 0.05), transparent 40%);
+            margin: 0;
+            padding: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-grid {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+            z-index: 0;
+            mask-image: radial-gradient(circle at center, black, transparent 80%);
+            -webkit-mask-image: radial-gradient(circle at center, black, transparent 80%);
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 400px;
+            background: rgba(10, 10, 10, 0.6);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            position: relative;
+            z-index: 1;
+            transform: translateY(20px);
+            opacity: 0;
+            animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes slideUpFade {
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-logo {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.25rem;
+            box-shadow: 0 8px 16px rgba(245, 158, 11, 0.2);
+            color: #000;
+        }
+
+        .login-header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #fff;
+            margin: 0 0 0.5rem 0;
+            letter-spacing: -0.025em;
+        }
+
+        .login-header p {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin: 0;
+        }
+
+        .login-form .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .login-form label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .login-form input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-md);
+            padding: 0.875rem 1rem;
+            color: #fff;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .login-form input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+        }
+
+        .login-form .btn {
+            width: 100%;
+            padding: 0.875rem;
+            font-size: 1rem;
+            margin-top: 1rem;
+            justify-content: center;
+        }
+
+        .error-message {
+            color: var(--danger);
+            font-size: 0.85rem;
+            text-align: center;
+            margin-top: 1rem;
+            min-height: 20px;
+            font-weight: 500;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .error-message.visible {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="login-page">
+    <div class="login-grid"></div>
+    <div class="login-card" id="auth-card">
+        <div class="login-header">
+            <div class="login-logo">
+                <i data-lucide="shield-check" style="width: 32px; height: 32px;"></i>
+            </div>
+            <h1 id="auth-title">Acesso Restrito</h1>
+            <p id="auth-subtitle">Faça login para gerenciar o Armarinho</p>
+        </div>
+        
+        <form id="auth-form" class="login-form">
+            <div class="form-group" id="group-name" style="display: none;">
+                <label for="name">Nome Completo</label>
+                <input type="text" id="name" placeholder="Seu Nome">
+            </div>
+            <div class="form-group">
+                <label for="email">E-mail Administrativo</label>
+                <input type="email" id="email" required placeholder="seu@email.com">
+            </div>
+            <div class="form-group">
+                <label for="password">Senha de Segurança</label>
+                <input type="password" id="password" required placeholder="••••••••" minlength="6">
+            </div>
+            
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-muted); font-size: 0.875rem;">
+                    <input type="checkbox" id="remember" checked style="accent-color: var(--primary); width: 16px; height: 16px;">
+                    Manter conectado
+                </label>
+                <a href="#" style="color: var(--primary); font-size: 0.875rem; text-decoration: none;">Esqueceu a senha?</a>
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="btn-auth">
+                <span id="btn-auth-text">Entrar no Sistema</span>
+                <i data-lucide="arrow-right"></i>
+            </button>
+            <div id="error-msg" class="error-message">Credenciais inválidas.</div>
+        </form>
+
+        <div style="text-align: center; margin-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem;">
+            <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0;">
+                <span id="toggle-text">Ainda não tem acesso?</span> 
+                <a href="#" id="toggle-auth" style="color: var(--primary); font-weight: 500; text-decoration: none; transition: color 0.2s;">Criar Conta</a>
+            </p>
+        </div>
+    </div>
+
+    <script type="module" src="js/auth.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
