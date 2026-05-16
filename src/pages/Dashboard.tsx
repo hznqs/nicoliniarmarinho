@@ -14,6 +14,7 @@ import type { LucideIcon } from 'lucide-react';
 import { DataService } from '../lib/services';
 import type { Venda, Compra, Produto } from '../lib/services';
 import type { DashboardChartsData } from '../components/dashboard/ChartsPanel';
+import { formatDateInput, formatMonthInput } from '../lib/date';
 
 const ChartsPanel = lazy(() => import('../components/dashboard/ChartsPanel').then((m) => ({ default: m.ChartsPanel })));
 
@@ -52,23 +53,23 @@ const emptyCharts: DashboardChartsData = {
 };
 
 const StatCard = ({ title, value, icon: Icon, trend, color, subtitle }: StatCardProps) => (
-  <div className="bg-zinc-900/50 backdrop-blur-xl border border-zinc-800 p-6 rounded-2xl">
-    <div className="flex items-center justify-between mb-4">
-      <span className="text-zinc-400 text-sm font-medium">{title}</span>
-      <div className={`p-2 rounded-lg ${color}`}>
+  <div className="bg-zinc-900/50 backdrop-blur-xl border border-zinc-800 p-6 rounded-2xl min-w-0 overflow-hidden">
+    <div className="flex items-center justify-between gap-3 mb-4 min-w-0">
+      <span className="text-zinc-400 text-sm font-medium truncate">{title}</span>
+      <div className={`p-2 rounded-lg shrink-0 ${color}`}>
         <Icon size={20} />
       </div>
     </div>
-    <div className="flex flex-col">
-      <h3 className="text-2xl font-bold text-white mb-1">{value}</h3>
-      <div className="flex items-center gap-1.5">
+    <div className="flex flex-col min-w-0">
+      <h3 className="money-text stat-card-value text-2xl font-bold text-white mb-1">{value}</h3>
+      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
         {trend && (
-          <span className={`text-xs flex items-center ${trend.positive ? 'text-emerald-400' : 'text-rose-400'}`}>
+          <span className={`text-xs flex items-center shrink-0 ${trend.positive ? 'text-emerald-400' : 'text-rose-400'}`}>
             {trend.positive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
             {trend.value}
           </span>
         )}
-        <span className="text-zinc-500 text-xs">{subtitle}</span>
+        <span className="text-zinc-500 text-xs min-w-0">{subtitle}</span>
       </div>
     </div>
   </div>
@@ -99,7 +100,7 @@ export const Dashboard = () => {
           DataService.getProdutos().catch(() => [] as Produto[])
         ]);
 
-        const currentMonth = new Date().toISOString().slice(0, 7);
+        const currentMonth = formatMonthInput();
         
         const vendasMes = vendas.filter(v => v.data.startsWith(currentMonth));
         const totalVendas = vendasMes.reduce((acc, v) => acc + v.valor, 0);
@@ -118,7 +119,7 @@ export const Dashboard = () => {
         for (let i = 6; i >= 0; i--) {
           const d = new Date();
           d.setDate(d.getDate() - i);
-          const dateStr = d.toISOString().split('T')[0];
+          const dateStr = formatDateInput(d);
           const displayStr = `${d.getDate()}/${d.getMonth()+1}`;
           
           const totalVendasDia = vendas
@@ -138,7 +139,7 @@ export const Dashboard = () => {
         for (let i = 2; i >= 0; i--) {
           const d = new Date();
           d.setMonth(d.getMonth() - i);
-          const monthStr = d.toISOString().slice(0, 7);
+          const monthStr = formatMonthInput(d);
           
           const vTot = vendas.filter(v => v.data.startsWith(monthStr)).reduce((a, b) => a + b.valor, 0);
           const cTot = compras.filter(c => c.data.startsWith(monthStr)).reduce((a, b) => a + b.valor, 0);
@@ -197,7 +198,7 @@ export const Dashboard = () => {
         <p className="text-zinc-400">Visão geral do seu negócio e desempenho financeiro.</p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
+      <div className="dashboard-stat-grid grid gap-4">
         <StatCard 
           title="Vendas (Mês)"
           value={formatCurrency(data.stats.totalVendas)}

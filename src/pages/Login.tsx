@@ -8,6 +8,7 @@ export const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -20,16 +21,30 @@ export const Login = () => {
     setNotice(null);
 
     try {
+      const normalizedEmail = email.trim().toLowerCase();
+
+      if (!normalizedEmail) {
+        throw new Error('Informe um e-mail válido.');
+      }
+
       if (!isLogin && password.length < 8) {
         throw new Error('A senha deve ter pelo menos 8 caracteres.');
       }
 
+      if (!isLogin && password !== confirmPassword) {
+        throw new Error('As senhas não conferem.');
+      }
+
+      if (password.length > 128) {
+        throw new Error('A senha deve ter no máximo 128 caracteres.');
+      }
+
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
         if (error) throw error;
       } else {
         const { error } = await supabase.auth.signUp({ 
-          email, 
+          email: normalizedEmail,
           password,
           options: {
             data: {
@@ -47,8 +62,11 @@ export const Login = () => {
       const message = getErrorMessage(err);
       if (message.includes('Invalid login')) {
         setError('E-mail ou senha incorretos.');
+      } else if (message.includes('não conferem')) {
+        setError('As senhas não conferem.');
       } else if (message.includes('already registered')) {
-        setError('Este e-mail já está cadastrado.');
+        setNotice('Se este e-mail já existir, use a recuperação de senha para acessar sua conta.');
+        setIsLogin(true);
       } else if (message.includes('Password should be') || message.includes('8 caracteres')) {
         setError('A senha deve ter pelo menos 8 caracteres.');
       } else {
@@ -68,18 +86,27 @@ export const Login = () => {
       return;
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
         redirectTo: `${window.location.origin}/login`,
       });
       if (error) throw error;
-      setNotice('Enviamos um link de redefinição para o e-mail informado.');
+      setNotice('Se o e-mail existir, enviaremos um link de redefinição.');
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Não foi possível enviar o link de redefinição.'));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleToggleMode = () => {
+    setIsLogin((current) => !current);
+    setPassword('');
+    setConfirmPassword('');
+    setError(null);
+    setNotice(null);
   };
 
   return (
@@ -114,6 +141,9 @@ export const Login = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   className="w-full bg-zinc-950/50 border border-zinc-800/80 rounded-xl px-4 py-3 pl-11 text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all shadow-inner"
                   placeholder="seu@email.com"
                 />
@@ -139,6 +169,7 @@ export const Login = () => {
                   type="password"
                   required
                   minLength={isLogin ? undefined : 8}
+                  maxLength={128}
                   autoComplete={isLogin ? 'current-password' : 'new-password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -147,6 +178,26 @@ export const Login = () => {
                 />
               </div>
             </div>
+
+            {!isLogin && (
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-zinc-400 ml-1">Confirmar senha</label>
+                <div className="relative group">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-primary transition-colors" size={18} />
+                  <input
+                    type="password"
+                    required
+                    minLength={8}
+                    maxLength={128}
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full bg-zinc-950/50 border border-zinc-800/80 rounded-xl px-4 py-3 pl-11 text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all shadow-inner"
+                    placeholder="Repita sua senha"
+                  />
+                </div>
+              </div>
+            )}
 
             {error && (
               <div className="flex items-center gap-2 p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium">
@@ -172,7 +223,8 @@ export const Login = () => {
 
           <div className="mt-8 pt-6 border-t border-zinc-800/50 text-center">
             <button 
-              onClick={() => setIsLogin(!isLogin)}
+              type="button"
+              onClick={handleToggleMode}
               className="text-zinc-400 hover:text-white text-sm transition-colors font-medium"
             >
               {isLogin ? 'Não tem uma conta? ' : 'Já tem uma conta? '}

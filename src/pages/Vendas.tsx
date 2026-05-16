@@ -16,17 +16,21 @@ import {
 import { DataService } from '../lib/services';
 import type { Produto, Venda, VendaItemInput } from '../lib/services';
 import { Button } from '../components/ui/Button';
+import { DatePicker } from '../components/ui/DatePicker';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Select } from '../components/ui/Select';
 import { getErrorMessage } from '../lib/error';
 import { exportRowsToCsv } from '../lib/export';
+import { formatDateBR, formatDateInput } from '../lib/date';
+import { useConfirm } from '../contexts/confirm';
 
 interface SaleLine extends VendaItemInput {
   localId: string;
 }
 
 export const Vendas = () => {
+  const confirm = useConfirm();
   const [vendas, setVendas] = useState<Venda[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,8 +44,8 @@ export const Vendas = () => {
 
   // Form State
   const [formData, setFormData] = useState({
-    valor: 0,
-    data: new Date().toISOString().split('T')[0],
+    valor: '',
+    data: formatDateInput(),
     descricao: ''
   });
 
@@ -71,7 +75,7 @@ export const Vendas = () => {
     if (venda) {
       setSelectedVenda(venda);
       setFormData({
-        valor: venda.valor,
+        valor: venda.valor.toFixed(2),
         data: venda.data,
         descricao: venda.descricao || ''
       });
@@ -84,8 +88,8 @@ export const Vendas = () => {
     } else {
       setSelectedVenda(null);
       setFormData({
-        valor: 0,
-        data: new Date().toISOString().split('T')[0],
+        valor: '',
+        data: formatDateInput(),
         descricao: ''
       });
       setSaleLines([]);
@@ -105,7 +109,7 @@ export const Vendas = () => {
       }));
       const payload = {
         ...formData,
-        valor: saleLines.length ? itemsTotal : formData.valor,
+        valor: saleLines.length ? itemsTotal : Number(formData.valor || 0),
       };
 
       if (selectedVenda) {
@@ -124,14 +128,20 @@ export const Vendas = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir esta venda?')) {
-      try {
-        await DataService.deleteVenda(id);
-        fetchVendas();
-      } catch (error) {
-        setError(getErrorMessage(error, 'Erro ao excluir venda.'));
-        console.error('Erro ao excluir venda:', error);
-      }
+    const ok = await confirm({
+      title: 'Excluir venda?',
+      message: 'A venda será removida e os itens vinculados podem retornar ao estoque.',
+      confirmLabel: 'Excluir venda',
+      tone: 'danger',
+    });
+    if (!ok) return;
+
+    try {
+      await DataService.deleteVenda(id);
+      fetchVendas();
+    } catch (error) {
+      setError(getErrorMessage(error, 'Erro ao excluir venda.'));
+      console.error('Erro ao excluir venda:', error);
     }
   };
 
@@ -139,9 +149,15 @@ export const Vendas = () => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
+  const formatMoneyInput = (value: string) => {
+    if (!value) return '';
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed.toFixed(2) : '';
+  };
+
   const exportToExcel = async () => {
     exportRowsToCsv(filteredVendas.map(v => ({
-      Data: new Date(v.data).toLocaleDateString('pt-BR'),
+      Data: formatDateBR(v.data),
       Valor: v.valor,
       Produtos: getItemsSummary(v),
       Descrição: v.descricao
@@ -229,13 +245,14 @@ export const Vendas = () => {
         )}
         <div className="p-6 border-b border-zinc-800 flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-zinc-800/20">
           <h3 className="text-lg font-semibold text-white">Listagem de Vendas</h3>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-xs font-semibold text-zinc-500 uppercase">Mês:</span>
+          <div className="filter-toolbar">
+            <div className="filter-field">
+              <span className="filter-label">Mês</span>
               <Select 
                 value={filterMonth}
                 onChange={setFilterMonth}
                 placeholder="Todos os meses"
+                className="w-full"
                 options={months.map(m => {
                   const [ano, mes] = m.split('-');
                   const date = new Date(parseInt(ano), parseInt(mes) - 1);
@@ -246,13 +263,13 @@ export const Vendas = () => {
                 })}
               />
             </div>
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-xs font-semibold text-zinc-500 uppercase">Dia:</span>
-              <input
-                type="date"
+            <div className="filter-field">
+              <span className="filter-label">Dia</span>
+              <DatePicker
                 value={filterDay}
-                onChange={(e) => setFilterDay(e.target.value)}
-                className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+                onChange={setFilterDay}
+                placeholder="Todos os dias"
+                className="w-full"
               />
             </div>
             {(filterMonth || filterDay) && (
@@ -260,7 +277,7 @@ export const Vendas = () => {
                 type="button"
                 title="Limpar filtros"
                 onClick={() => { setFilterMonth(''); setFilterDay(''); }}
-                className="p-2.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl border border-zinc-800 transition-colors"
+                className="filter-clear-button text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl border border-zinc-800 transition-colors"
               >
                 <X size={18} />
               </button>
@@ -300,7 +317,7 @@ export const Vendas = () => {
                     <td className="px-6 py-4" data-label="Data">
                       <div className="flex items-center gap-2 text-zinc-300">
                         <Calendar size={16} className="text-zinc-500" />
-                        <span>{new Date(venda.data).toLocaleDateString('pt-BR')}</span>
+                        <span>{formatDateBR(venda.data)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4" data-label="Itens">
@@ -313,7 +330,7 @@ export const Vendas = () => {
                         <div className="p-1.5 bg-emerald-500/10 rounded text-emerald-400">
                           <TrendingUp size={14} />
                         </div>
-                        <span className="font-bold text-white">{formatCurrency(venda.valor)}</span>
+                        <span className="money-text font-bold text-white">{formatCurrency(venda.valor)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right" data-label="Ações">
@@ -341,7 +358,7 @@ export const Vendas = () => {
                 <tr className="bg-zinc-800/30">
                   <td colSpan={2} className="px-6 py-4 text-right text-zinc-400 font-semibold uppercase tracking-wider">Total do Período:</td>
                   <td colSpan={2} className="px-6 py-4">
-                    <span className="text-xl font-bold text-emerald-400">{formatCurrency(totalFiltrado)}</span>
+                    <span className="money-text text-xl font-bold text-emerald-400">{formatCurrency(totalFiltrado)}</span>
                   </td>
                 </tr>
               </tfoot>
@@ -364,15 +381,18 @@ export const Vendas = () => {
               step="0.01"
               min="0"
               value={saleLines.length ? itemsTotal.toFixed(2) : formData.valor}
-              onChange={(e) => setFormData({ ...formData, valor: e.target.value ? parseFloat(e.target.value) : 0 })}
+              onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
+              onBlur={() => setFormData((current) => ({
+                ...current,
+                valor: formatMoneyInput(current.valor),
+              }))}
               readOnly={saleLines.length > 0}
               required
             />
-            <Input 
+            <DatePicker 
               label="Data"
-              type="date"
               value={formData.data}
-              onChange={(e) => setFormData({ ...formData, data: e.target.value })}
+              onChange={(value) => setFormData({ ...formData, data: value })}
               required
             />
           </div>
@@ -451,7 +471,7 @@ export const Vendas = () => {
                       />
                       <div className="space-y-1.5">
                         <span className="block text-xs font-bold uppercase text-zinc-500">Subtotal</span>
-                        <div className="h-[42px] flex items-center rounded-xl border border-zinc-800 px-3 text-sm font-bold text-emerald-300">
+                        <div className="money-text min-h-[42px] flex items-center rounded-xl border border-zinc-800 px-3 py-2 text-sm font-bold text-emerald-300">
                           {formatCurrency(subtotal)}
                         </div>
                       </div>

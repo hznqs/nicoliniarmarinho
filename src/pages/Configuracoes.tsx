@@ -33,6 +33,7 @@ import {
   resetTheme,
   type ThemeSettings,
 } from '../lib/theme';
+import { useConfirm } from '../contexts/confirm';
 
 // ── Preset Palettes ─────────────────────────────────────────────────────────
 const COLOR_PRESETS = [
@@ -93,6 +94,7 @@ const SectionHeader = ({ icon: Icon, title, subtitle }: { icon: LucideIcon; titl
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export const Configuracoes = () => {
+  const confirm = useConfirm();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -141,6 +143,20 @@ export const Configuracoes = () => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setError('Use apenas imagens PNG, JPG ou WEBP para o logotipo.');
+      e.target.value = '';
+      return;
+    }
+
+    if (file.size > 500 * 1024) {
+      setError('O logotipo deve ter no máximo 500kb.');
+      e.target.value = '';
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
@@ -154,8 +170,10 @@ export const Configuracoes = () => {
         canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
         setLogo(canvas.toDataURL('image/png'));
       };
+      img.onerror = () => setError('Não foi possível processar esta imagem.');
       img.src = event.target?.result as string;
     };
+    reader.onerror = () => setError('Não foi possível ler o arquivo selecionado.');
     reader.readAsDataURL(file);
   };
 
@@ -178,8 +196,14 @@ export const Configuracoes = () => {
     }
   };
 
-  const handleReset = () => {
-    if (!confirm('Restaurar todas as configurações visuais para o padrão?')) return;
+  const handleReset = async () => {
+    const ok = await confirm({
+      title: 'Restaurar aparência?',
+      message: 'Todas as configurações visuais voltarão para o padrão do sistema.',
+      confirmLabel: 'Restaurar padrão',
+      tone: 'warning',
+    });
+    if (!ok) return;
     resetTheme();
     setTheme(loadFullTheme());
   };
@@ -246,7 +270,7 @@ export const Configuracoes = () => {
                   )}
                 </div>
                 <div>
-                  <input type="file" id="logo-upload" className="hidden" accept="image/*" onChange={handleFileUpload} />
+                  <input type="file" id="logo-upload" className="hidden" accept="image/png,image/jpeg,image/webp" onChange={handleFileUpload} />
                   <label htmlFor="logo-upload" className="inline-flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white text-sm rounded-xl cursor-pointer transition-all border border-zinc-700">
                     <UploadCloud size={16} /> Escolher Imagem
                   </label>

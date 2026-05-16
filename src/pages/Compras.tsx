@@ -6,35 +6,51 @@ import {
   Trash2, 
   Loader2,
   Calendar,
-  X
+  X,
+  ReceiptText,
+  CheckCircle2,
+  RotateCcw,
+  AlertCircle
 } from 'lucide-react';
 import { DataService } from '../lib/services';
 import type { Compra, Fornecedor, Cartao } from '../lib/services';
 import { Button } from '../components/ui/Button';
+import { Checkbox } from '../components/ui/Checkbox';
+import { DatePicker } from '../components/ui/DatePicker';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Select } from '../components/ui/Select';
 import { exportRowsToCsv } from '../lib/export';
+import { formatDateBR, formatDateInput } from '../lib/date';
+import { useConfirm } from '../contexts/confirm';
 
 export const Compras = () => {
+  const confirm = useConfirm();
   const [compras, setCompras] = useState<Compra[]>([]);
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [cartoes, setCartoes] = useState<Cartao[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCompra, setSelectedCompra] = useState<Compra | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   
   // Filters
   const [filterMonth, setFilterMonth] = useState('');
   const [filterFornecedor, setFilterFornecedor] = useState('');
-  const [filterCartao, setFilterCartao] = useState('');
+  const [filterPagamento, setFilterPagamento] = useState('');
+  const [filterBoletoStatus, setFilterBoletoStatus] = useState('');
 
   // Form State
   const [formData, setFormData] = useState({
     valor: 0,
-    data: new Date().toISOString().split('T')[0],
+    data: formatDateInput(),
     fornecedorId: '',
+    formaPagamento: 'avista' as Compra['formaPagamento'],
     cartaoId: '',
+    boletoVencimento: '',
+    boletoCodigo: '',
+    boletoPago: false,
+    boletoDataPagamento: '',
     descricao: ''
   });
 
@@ -61,22 +77,33 @@ export const Compras = () => {
   }, []);
 
   const handleOpenModal = (compra: Compra | null = null) => {
+    setFormError(null);
     if (compra) {
       setSelectedCompra(compra);
       setFormData({
         valor: compra.valor,
         data: compra.data,
         fornecedorId: compra.fornecedorId,
+        formaPagamento: compra.formaPagamento || (compra.cartaoId ? 'cartao' : 'avista'),
         cartaoId: compra.cartaoId || '',
+        boletoVencimento: compra.boletoVencimento || '',
+        boletoCodigo: compra.boletoCodigo || '',
+        boletoPago: Boolean(compra.boletoPago),
+        boletoDataPagamento: compra.boletoDataPagamento || '',
         descricao: compra.descricao || ''
       });
     } else {
       setSelectedCompra(null);
       setFormData({
         valor: 0,
-        data: new Date().toISOString().split('T')[0],
+        data: formatDateInput(),
         fornecedorId: '',
+        formaPagamento: 'avista',
         cartaoId: '',
+        boletoVencimento: '',
+        boletoCodigo: '',
+        boletoPago: false,
+        boletoDataPagamento: '',
         descricao: ''
       });
     }
@@ -85,10 +112,25 @@ export const Compras = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
     try {
+      if (formData.formaPagamento === 'cartao' && !formData.cartaoId) {
+        setFormError('Selecione um cartão para compras no cartão.');
+        return;
+      }
+
+      if (formData.formaPagamento === 'boleto' && !formData.boletoVencimento) {
+        setFormError('Informe o vencimento do boleto.');
+        return;
+      }
+
       const payload: Omit<Compra, 'id' | 'fornecedores' | 'cartoes'> = {
         ...formData,
-        cartaoId: formData.cartaoId || null // Send null if empty
+        cartaoId: formData.formaPagamento === 'cartao' ? formData.cartaoId : null,
+        boletoVencimento: formData.formaPagamento === 'boleto' ? formData.boletoVencimento : null,
+        boletoCodigo: formData.formaPagamento === 'boleto' ? formData.boletoCodigo : '',
+        boletoPago: formData.formaPagamento === 'boleto' ? formData.boletoPago : false,
+        boletoDataPagamento: formData.formaPagamento === 'boleto' && formData.boletoPago ? formData.boletoDataPagamento : null,
       };
 
       if (selectedCompra) {
@@ -100,17 +142,43 @@ export const Compras = () => {
       fetchData();
     } catch (error) {
       console.error('Erro ao salvar compra:', error);
+      setFormError('Não foi possível salvar esta compra. Confira os campos e tente novamente.');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir esta compra?')) {
-      try {
-        await DataService.deleteCompra(id);
-        fetchData();
-      } catch (error) {
-        console.error('Erro ao excluir compra:', error);
-      }
+    const ok = await confirm({
+      title: 'Excluir compra?',
+      message: 'Esta compra será removida do histórico e dos controles financeiros.',
+      confirmLabel: 'Excluir compra',
+      tone: 'danger',
+    });
+    if (!ok) return;
+
+    try {
+      await DataService.deleteCompra(id);
+      fetchData();
+    } catch (error) {
+      console.error('Erro ao excluir compra:', error);
+    }
+  };
+
+  const handleBoletoPago = async (compra: Compra, pago: boolean) => {
+    const ok = await confirm({
+      title: pago ? 'Pagar boleto?' : 'Reabrir boleto?',
+      message: pago
+        ? 'O boleto será marcado como pago e deixará de aparecer como pendência.'
+        : 'O boleto voltará a aparecer como pendente no calendário e na lista.',
+      confirmLabel: pago ? 'Pagar boleto' : 'Reabrir boleto',
+      tone: pago ? 'success' : 'warning',
+    });
+    if (!ok) return;
+
+    try {
+      await DataService.setBoletoPago(compra.id, pago);
+      fetchData();
+    } catch (error) {
+      console.error('Erro ao atualizar boleto:', error);
     }
   };
 
@@ -118,11 +186,49 @@ export const Compras = () => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
+  const getFormaPagamento = (compra: Compra) => compra.formaPagamento || (compra.cartaoId ? 'cartao' : 'avista');
+
+  const today = formatDateInput();
+
+  const getBoletoStatus = (compra: Compra) => {
+    if (getFormaPagamento(compra) !== 'boleto') return '';
+    if (compra.boletoPago) return 'pago';
+    if (compra.boletoVencimento && compra.boletoVencimento < today) return 'vencido';
+    return 'aberto';
+  };
+
+  const getPaymentBadge = (compra: Compra) => {
+    const forma = getFormaPagamento(compra);
+    if (forma === 'cartao') {
+      return {
+        label: compra.cartoes?.nome || 'Cartão',
+        className: 'bg-purple-500/10 text-purple-400 border border-purple-500/20',
+      };
+    }
+    if (forma === 'boleto') {
+      return {
+        label: `Boleto ${compra.boletoPago ? 'pago' : 'aberto'}`,
+        className: compra.boletoPago
+          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+          : 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
+      };
+    }
+    return {
+      label: 'À vista',
+      className: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+    };
+  };
+
   const exportToExcel = async () => {
     const dataToExport = filteredCompras.map(c => ({
-      Data: new Date(c.data).toLocaleDateString('pt-BR'),
+      Data: formatDateBR(c.data),
       Fornecedor: c.fornecedores?.nome || 'N/A',
-      Cartão: c.cartoes?.nome || 'Dinheiro/Pix',
+      'Forma de pagamento': getPaymentBadge(c).label,
+      Cartão: c.cartoes?.nome || '',
+      'Vencimento boleto': formatDateBR(c.boletoVencimento),
+      'Código boleto': c.boletoCodigo || '',
+      'Status boleto': getFormaPagamento(c) === 'boleto' ? (c.boletoPago ? 'Pago' : 'Em aberto') : '',
+      'Pagamento boleto': formatDateBR(c.boletoDataPagamento),
       Valor: c.valor,
       Descrição: c.descricao || ''
     }));
@@ -133,12 +239,14 @@ export const Compras = () => {
   const filteredCompras = compras.filter(c => {
     const matchMonth = filterMonth ? c.data.startsWith(filterMonth) : true;
     const matchForn = filterFornecedor ? c.fornecedorId === filterFornecedor : true;
-    const matchCard = filterCartao === 'money'
-      ? !c.cartaoId
-      : filterCartao
-        ? c.cartaoId === filterCartao
+    const forma = getFormaPagamento(c);
+    const matchPagamento = filterPagamento.startsWith('cartao:')
+      ? c.cartaoId === filterPagamento.replace('cartao:', '')
+      : filterPagamento
+        ? forma === filterPagamento
         : true;
-    return matchMonth && matchForn && matchCard;
+    const matchBoletoStatus = filterBoletoStatus ? getBoletoStatus(c) === filterBoletoStatus : true;
+    return matchMonth && matchForn && matchPagamento && matchBoletoStatus;
   });
 
   const totalFiltrado = filteredCompras.reduce((acc, c) => acc + c.valor, 0);
@@ -165,7 +273,7 @@ export const Compras = () => {
       <div className="bg-zinc-900/50 backdrop-blur-xl border border-zinc-800 rounded-2xl overflow-hidden">
         {/* Filter Bar */}
         <div className="p-6 border-b border-zinc-800 bg-zinc-800/20">
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-zinc-500 uppercase flex items-center gap-1.5">
                 <Calendar size={12} /> Mês
@@ -202,19 +310,36 @@ export const Compras = () => {
                 Meio de Pagamento
               </label>
               <Select 
-                value={filterCartao}
-                onChange={setFilterCartao}
+                value={filterPagamento}
+                onChange={setFilterPagamento}
                 placeholder="Todos pagamentos"
                 options={[
-                  { value: 'money', label: 'Dinheiro / PIX' },
-                  ...cartoes.map(c => ({ value: c.id, label: c.nome }))
+                  { value: 'avista', label: 'À vista' },
+                  { value: 'boleto', label: 'Boleto' },
+                  ...cartoes.map(c => ({ value: `cartao:${c.id}`, label: `Cartão: ${c.nome}` }))
+                ]}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-zinc-500 uppercase flex items-center gap-1.5">
+                Status do Boleto
+              </label>
+              <Select 
+                value={filterBoletoStatus}
+                onChange={setFilterBoletoStatus}
+                placeholder="Todos boletos"
+                options={[
+                  { value: 'aberto', label: 'Abertos' },
+                  { value: 'vencido', label: 'Vencidos' },
+                  { value: 'pago', label: 'Pagos' },
                 ]}
               />
             </div>
 
             <div className="flex items-end">
               <button 
-                onClick={() => { setFilterMonth(''); setFilterFornecedor(''); setFilterCartao(''); }}
+                onClick={() => { setFilterMonth(''); setFilterFornecedor(''); setFilterPagamento(''); setFilterBoletoStatus(''); }}
                 className="w-full h-[42px] border border-zinc-800 hover:bg-zinc-800 text-zinc-400 text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2"
               >
                 <X size={16} /> Limpar Filtros
@@ -248,27 +373,55 @@ export const Compras = () => {
                   </td>
                 </tr>
               ) : (
-                filteredCompras.map((compra) => (
+                filteredCompras.map((compra) => {
+                  const badge = getPaymentBadge(compra);
+                  return (
                   <tr 
                     key={compra.id}
                     className="hover:bg-white/5 transition-colors group"
                   >
                     <td className="px-6 py-4" data-label="Data">
-                      <div className="text-zinc-300 text-sm">{new Date(compra.data).toLocaleDateString('pt-BR')}</div>
+                      <div className="text-zinc-300 text-sm">{formatDateBR(compra.data)}</div>
                     </td>
                     <td className="px-6 py-4" data-label="Fornecedor">
                       <div className="font-semibold text-white">{compra.fornecedores?.nome || 'N/A'}</div>
                     </td>
                     <td className="px-6 py-4" data-label="Pagamento">
-                      <div className={`text-xs px-2.5 py-1 rounded-full inline-block font-medium ${compra.cartaoId ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
-                        {compra.cartoes?.nome || 'Dinheiro / PIX'}
+                      <div className="flex flex-col items-start md:items-start gap-1">
+                        <span className={`text-xs px-2.5 py-1 rounded-full inline-block font-medium ${badge.className}`}>
+                          {badge.label}
+                        </span>
+                        {getFormaPagamento(compra) === 'boleto' && compra.boletoVencimento && (
+                          <span className="text-xs text-zinc-500">
+                            Vence em {formatDateBR(compra.boletoVencimento)}
+                          </span>
+                        )}
+                        {getFormaPagamento(compra) === 'boleto' && compra.boletoDataPagamento && (
+                          <span className="text-xs text-emerald-400">
+                            Pago em {formatDateBR(compra.boletoDataPagamento)}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4" data-label="Valor">
-                      <span className="font-bold text-white">{formatCurrency(compra.valor)}</span>
+                      <span className="money-text font-bold text-white">{formatCurrency(compra.valor)}</span>
                     </td>
                     <td className="px-6 py-4 text-right" data-label="Ações">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {getFormaPagamento(compra) === 'boleto' && (
+                          <button
+                            type="button"
+                            title={compra.boletoPago ? 'Reabrir boleto' : 'Pagar boleto'}
+                            onClick={() => handleBoletoPago(compra, !compra.boletoPago)}
+                            className={`p-2 rounded-lg transition-all ${
+                              compra.boletoPago
+                                ? 'text-zinc-400 hover:text-amber-400 hover:bg-amber-400/10'
+                                : 'text-zinc-400 hover:text-emerald-400 hover:bg-emerald-400/10'
+                            }`}
+                          >
+                            {compra.boletoPago ? <RotateCcw size={16} /> : <CheckCircle2 size={16} />}
+                          </button>
+                        )}
                         <button 
                           onClick={() => handleOpenModal(compra)}
                           className="p-2 text-zinc-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
@@ -284,7 +437,8 @@ export const Compras = () => {
                       </div>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
             {!loading && filteredCompras.length > 0 && (
@@ -292,7 +446,7 @@ export const Compras = () => {
                 <tr className="bg-zinc-800/30 border-t border-zinc-700">
                   <td colSpan={3} className="px-6 py-4 text-right text-zinc-400 font-semibold uppercase tracking-wider text-xs">Total Filtrado:</td>
                   <td colSpan={2} className="px-6 py-4">
-                    <span className="text-xl font-bold text-rose-400">{formatCurrency(totalFiltrado)}</span>
+                    <span className="money-text text-xl font-bold text-rose-400">{formatCurrency(totalFiltrado)}</span>
                   </td>
                 </tr>
               </tfoot>
@@ -307,7 +461,14 @@ export const Compras = () => {
         title={selectedCompra ? 'Editar Compra' : 'Registrar Compra'}
       >
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
+          {formError && (
+            <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200">
+              <AlertCircle size={18} className="mt-0.5 shrink-0" />
+              <p className="text-sm font-medium">{formError}</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input 
               label="Valor (R$)"
               type="number"
@@ -316,11 +477,10 @@ export const Compras = () => {
               onChange={(e) => setFormData({ ...formData, valor: e.target.value ? parseFloat(e.target.value) : 0 })}
               required
             />
-            <Input 
+            <DatePicker 
               label="Data"
-              type="date"
               value={formData.data}
-              onChange={(e) => setFormData({ ...formData, data: e.target.value })}
+              onChange={(value) => setFormData({ ...formData, data: value })}
               required
             />
           </div>
@@ -339,16 +499,82 @@ export const Compras = () => {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-zinc-400">Cartão de Crédito (Opcional)</label>
+            <label className="text-sm font-medium text-zinc-400">Forma de Pagamento</label>
             <select 
               className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary/20 outline-none"
-              value={formData.cartaoId}
-              onChange={(e) => setFormData({ ...formData, cartaoId: e.target.value })}
+              value={formData.formaPagamento}
+              onChange={(e) => setFormData({
+                ...formData,
+                formaPagamento: e.target.value as Compra['formaPagamento'],
+                cartaoId: e.target.value === 'cartao' ? formData.cartaoId : '',
+                boletoVencimento: e.target.value === 'boleto' ? formData.boletoVencimento : '',
+                boletoCodigo: e.target.value === 'boleto' ? formData.boletoCodigo : '',
+                boletoPago: e.target.value === 'boleto' ? formData.boletoPago : false,
+                boletoDataPagamento: e.target.value === 'boleto' ? formData.boletoDataPagamento : '',
+              })}
             >
-              <option value="">Dinheiro / PIX</option>
-              {cartoes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              <option value="avista">À vista</option>
+              <option value="boleto">Boleto</option>
+              <option value="cartao">Cartão de crédito</option>
             </select>
           </div>
+
+          {formData.formaPagamento === 'cartao' && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-zinc-400">Cartão de Crédito</label>
+              <select 
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary/20 outline-none"
+                value={formData.cartaoId}
+                onChange={(e) => setFormData({ ...formData, cartaoId: e.target.value })}
+                required
+              >
+                <option value="">Selecione um cartão</option>
+                {cartoes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+            </div>
+          )}
+
+          {formData.formaPagamento === 'boleto' && (
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-800/20 p-4 space-y-4">
+              <div className="flex items-center gap-2 text-sm font-bold text-white">
+                <ReceiptText size={18} className="text-primary" />
+                Dados do boleto
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <DatePicker 
+                  label="Vencimento do boleto"
+                  value={formData.boletoVencimento}
+                  onChange={(value) => setFormData({ ...formData, boletoVencimento: value })}
+                  required
+                />
+                <Input 
+                  label="Código / Linha digitável"
+                  placeholder="Opcional"
+                  value={formData.boletoCodigo}
+                  onChange={(e) => setFormData({ ...formData, boletoCodigo: e.target.value })}
+                />
+              </div>
+              <Checkbox
+                label="Boleto já foi pago"
+                description="Marque para registrar a data do pagamento."
+                checked={formData.boletoPago}
+                onCheckedChange={(checked) => setFormData({
+                  ...formData,
+                  boletoPago: checked,
+                  boletoDataPagamento: checked
+                    ? formData.boletoDataPagamento || formatDateInput()
+                    : '',
+                })}
+              />
+              {formData.boletoPago && (
+                <DatePicker 
+                  label="Data do pagamento"
+                  value={formData.boletoDataPagamento}
+                  onChange={(value) => setFormData({ ...formData, boletoDataPagamento: value })}
+                />
+              )}
+            </div>
+          )}
 
           <Input 
             label="Descrição / Observação"

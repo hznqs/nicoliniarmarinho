@@ -1,11 +1,17 @@
 import { supabase } from './supabase';
 import {
+  assertDateInput,
+  assertDayOfMonth,
+  assertId,
   assertInteger,
   assertMoney,
+  assertMonthInput,
   assertRequiredText,
   clampText,
   normalizeOptionalText,
+  sanitizeLogoDataUrl,
 } from './validation';
+import { formatDateInput } from './date';
 
 export interface Venda {
   id: string;
@@ -37,7 +43,12 @@ export interface Compra {
   valor: number;
   descricao?: string;
   fornecedorId: string;
+  formaPagamento?: 'avista' | 'cartao' | 'boleto';
   cartaoId?: string | null;
+  boletoVencimento?: string | null;
+  boletoCodigo?: string | null;
+  boletoPago?: boolean;
+  boletoDataPagamento?: string | null;
   fornecedores?: { nome: string };
   cartoes?: { nome: string };
 }
@@ -49,6 +60,14 @@ export interface Cartao {
   digitos?: string;
   fechamento?: number;
   vencimento?: number;
+}
+
+export interface CartaoFaturaPagamento {
+  id: string;
+  cartaoId: string;
+  mes: string;
+  valor: number;
+  dataPagamento: string;
 }
 
 export interface Fornecedor {
@@ -70,6 +89,19 @@ export interface Produto {
   ativo: boolean;
 }
 
+export type TipoLancamentoFinanceiro = 'custo_fixo' | 'prolabore' | 'distribuicao_lucro';
+
+export interface LancamentoFinanceiro {
+  id: string;
+  tipo: TipoLancamentoFinanceiro;
+  descricao: string;
+  valor: number;
+  data: string;
+  categoria?: string;
+  recorrente?: boolean;
+  observacao?: string;
+}
+
 export interface Config {
   user_id?: string;
   nome: string;
@@ -77,10 +109,10 @@ export interface Config {
 }
 
 const getCurrentUserId = async () => {
-  const { data: { session }, error } = await supabase.auth.getSession();
+  const { data: { user }, error } = await supabase.auth.getUser();
   if (error) throw error;
-  if (!session?.user?.id) throw new Error('Usuário não autenticado no sistema.');
-  return session.user.id;
+  if (!user?.id) throw new Error('Usuário não autenticado no sistema.');
+  return user.id;
 };
 
 const sanitizeVenda = (venda: Omit<Venda, 'id'> | Partial<Venda>) => {
@@ -90,28 +122,51 @@ const sanitizeVenda = (venda: Omit<Venda, 'id'> | Partial<Venda>) => {
   return {
     ...rest,
     valor: venda.valor === undefined ? undefined : assertMoney(venda.valor, 'Valor da venda'),
-    data: venda.data,
+    data: venda.data === undefined ? undefined : assertDateInput(venda.data, 'Data da venda'),
     descricao: normalizeOptionalText(venda.descricao, 220),
   };
 };
 
-const sanitizeCompra = (compra: Partial<Compra>) => ({
-  ...compra,
-  valor: compra.valor === undefined ? undefined : assertMoney(compra.valor, 'Valor da compra'),
-  data: compra.data,
-  descricao: normalizeOptionalText(compra.descricao, 260),
-  fornecedorId: compra.fornecedorId ? clampText(compra.fornecedorId, 80) : compra.fornecedorId,
-  cartaoId: compra.cartaoId ? clampText(compra.cartaoId, 80) : null,
-});
+const sanitizeCompra = (compra: Partial<Compra>) => {
+  const formaPagamento = compra.formaPagamento ?? (compra.cartaoId ? 'cartao' : 'avista');
+  const normalizedForma = ['avista', 'cartao', 'boleto'].includes(formaPagamento) ? formaPagamento : 'avista';
+
+  return {
+    ...compra,
+    valor: compra.valor === undefined ? undefined : assertMoney(compra.valor, 'Valor da compra'),
+    data: compra.data === undefined ? undefined : assertDateInput(compra.data, 'Data da compra'),
+    descricao: normalizeOptionalText(compra.descricao, 260),
+    fornecedorId: compra.fornecedorId ? assertId(compra.fornecedorId, 'Fornecedor') : compra.fornecedorId,
+    formaPagamento: normalizedForma,
+    cartaoId: normalizedForma === 'cartao' && compra.cartaoId ? assertId(compra.cartaoId, 'Cartão') : null,
+    boletoVencimento: normalizedForma === 'boleto' && compra.boletoVencimento
+      ? assertDateInput(compra.boletoVencimento, 'Vencimento do boleto')
+      : null,
+    boletoCodigo: normalizedForma === 'boleto' ? normalizeOptionalText(compra.boletoCodigo, 180) : null,
+    boletoPago: normalizedForma === 'boleto' ? Boolean(compra.boletoPago) : false,
+    boletoDataPagamento: normalizedForma === 'boleto' && compra.boletoPago && compra.boletoDataPagamento
+      ? assertDateInput(compra.boletoDataPagamento, 'Data de pagamento do boleto')
+      : null,
+  };
+};
 
 const sanitizeCartao = (cartao: Omit<Cartao, 'id'> | Partial<Cartao>) => ({
   ...cartao,
   nome: cartao.nome === undefined ? undefined : assertRequiredText(cartao.nome, 'Nome do cartão', 80),
   limite: cartao.limite === undefined ? undefined : assertMoney(cartao.limite, 'Limite'),
   digitos: cartao.digitos ? clampText(cartao.digitos.replace(/\D/g, ''), 4) : undefined,
-  fechamento: cartao.fechamento === undefined ? undefined : assertInteger(cartao.fechamento, 'Fechamento', 1),
-  vencimento: cartao.vencimento === undefined ? undefined : assertInteger(cartao.vencimento, 'Vencimento', 1),
+  fechamento: cartao.fechamento === undefined ? undefined : assertDayOfMonth(cartao.fechamento, 'Fechamento'),
+  vencimento: cartao.vencimento === undefined ? undefined : assertDayOfMonth(cartao.vencimento, 'Vencimento'),
 });
+
+const sanitizeCartaoFaturaPagamento = (pagamento: Omit<CartaoFaturaPagamento, 'id'> | Partial<CartaoFaturaPagamento>) => ({
+  ...pagamento,
+  cartaoId: pagamento.cartaoId === undefined ? undefined : assertId(pagamento.cartaoId, 'Cartão'),
+  mes: pagamento.mes === undefined ? undefined : assertMonthInput(pagamento.mes, 'Mês da fatura'),
+  valor: pagamento.valor === undefined ? undefined : assertMoney(pagamento.valor, 'Valor da fatura'),
+  dataPagamento: assertDateInput(pagamento.dataPagamento || formatDateInput(), 'Data de pagamento da fatura'),
+});
+
 
 const sanitizeFornecedor = (fornecedor: Omit<Fornecedor, 'id'> | Partial<Fornecedor>) => ({
   ...fornecedor,
@@ -132,6 +187,28 @@ const sanitizeProduto = (produto: Omit<Produto, 'id'> | Partial<Produto>) => ({
   ativo: produto.ativo,
 });
 
+const sanitizeLancamentoFinanceiro = (
+  lancamento: Omit<LancamentoFinanceiro, 'id'> | Partial<LancamentoFinanceiro>
+) => {
+  const tipo = lancamento.tipo;
+  if (tipo !== undefined && !['custo_fixo', 'prolabore', 'distribuicao_lucro'].includes(tipo)) {
+    throw new Error('Tipo de lançamento financeiro inválido.');
+  }
+
+  return {
+    ...lancamento,
+    tipo,
+    descricao: lancamento.descricao === undefined
+      ? undefined
+      : assertRequiredText(lancamento.descricao, 'Descrição do lançamento', 140),
+    categoria: normalizeOptionalText(lancamento.categoria, 80),
+    valor: lancamento.valor === undefined ? undefined : assertMoney(lancamento.valor, 'Valor do lançamento'),
+    data: lancamento.data === undefined ? undefined : assertDateInput(lancamento.data, 'Data do lançamento'),
+    recorrente: lancamento.recorrente ?? false,
+    observacao: normalizeOptionalText(lancamento.observacao, 500),
+  };
+};
+
 const sanitizeVendaItems = (items: VendaItemInput[]) => {
   return items
     .filter((item) => item.produtoId)
@@ -139,7 +216,7 @@ const sanitizeVendaItems = (items: VendaItemInput[]) => {
       const quantidade = assertInteger(item.quantidade, 'Quantidade', 1);
       const precoUnitario = assertMoney(item.precoUnitario, 'Preço unitário');
       return {
-        produtoId: clampText(item.produtoId, 80),
+        produtoId: assertId(item.produtoId, 'Produto'),
         quantidade,
         precoUnitario,
         subtotal: assertMoney(quantidade * precoUnitario, 'Subtotal'),
@@ -440,6 +517,22 @@ export const DataService = {
     if (error) throw error;
   },
 
+  async setBoletoPago(id: string, pago: boolean, dataPagamento?: string | null) {
+    const user_id = await getCurrentUserId();
+    const { data, error } = await supabase
+      .from('compras')
+      .update({
+        boletoPago: pago,
+        boletoDataPagamento: pago ? dataPagamento || formatDateInput() : null,
+      })
+      .eq('id', id)
+      .eq('user_id', user_id)
+      .eq('formaPagamento', 'boleto')
+      .select();
+    if (error) throw error;
+    return data[0] as Compra;
+  },
+
   // Cartões
   async getCartoes() {
     const user_id = await getCurrentUserId();
@@ -482,6 +575,60 @@ export const DataService = {
       .delete()
       .eq('id', id)
       .eq('user_id', user_id);
+    if (error) throw error;
+  },
+
+  async getCartaoFaturaPagamentos() {
+    const user_id = await getCurrentUserId();
+    const { data, error } = await supabase
+      .from('cartao_fatura_pagamentos')
+      .select('*')
+      .eq('user_id', user_id)
+      .order('mes', { ascending: false });
+    if (error) throw error;
+    return data as CartaoFaturaPagamento[];
+  },
+
+  async setCartaoFaturaPago(cartaoId: string, mes: string, valor: number, dataPagamento = formatDateInput()) {
+    const user_id = await getCurrentUserId();
+    const clean = sanitizeCartaoFaturaPagamento({ cartaoId, mes, valor, dataPagamento });
+    const { data: existing, error: existingError } = await supabase
+      .from('cartao_fatura_pagamentos')
+      .select('id')
+      .eq('user_id', user_id)
+      .eq('cartaoId', cartaoId)
+      .eq('mes', mes)
+      .maybeSingle();
+    if (existingError) throw existingError;
+
+    if (existing?.id) {
+      const { data, error } = await supabase
+        .from('cartao_fatura_pagamentos')
+        .update(clean)
+        .eq('id', existing.id)
+        .eq('user_id', user_id)
+        .select();
+      if (error) throw error;
+      return data[0] as CartaoFaturaPagamento;
+    }
+
+    const id = crypto.randomUUID();
+    const { data, error } = await supabase
+      .from('cartao_fatura_pagamentos')
+      .insert([{ id, user_id, ...clean }])
+      .select();
+    if (error) throw error;
+    return data[0] as CartaoFaturaPagamento;
+  },
+
+  async reabrirCartaoFatura(cartaoId: string, mes: string) {
+    const user_id = await getCurrentUserId();
+    const { error } = await supabase
+      .from('cartao_fatura_pagamentos')
+      .delete()
+      .eq('user_id', user_id)
+      .eq('cartaoId', cartaoId)
+      .eq('mes', mes);
     if (error) throw error;
   },
 
@@ -575,6 +722,51 @@ export const DataService = {
     if (error) throw error;
   },
 
+  // Financeiro
+  async getLancamentosFinanceiros() {
+    const user_id = await getCurrentUserId();
+    const { data, error } = await supabase
+      .from('lancamentos_financeiros')
+      .select('*')
+      .eq('user_id', user_id)
+      .order('data', { ascending: false });
+    if (error) throw error;
+    return data as LancamentoFinanceiro[];
+  },
+
+  async createLancamentoFinanceiro(lancamento: Omit<LancamentoFinanceiro, 'id'>) {
+    const user_id = await getCurrentUserId();
+    const id = crypto.randomUUID();
+    const { data, error } = await supabase
+      .from('lancamentos_financeiros')
+      .insert([{ id, user_id, ...sanitizeLancamentoFinanceiro(lancamento) }])
+      .select();
+    if (error) throw error;
+    return data[0] as LancamentoFinanceiro;
+  },
+
+  async updateLancamentoFinanceiro(id: string, lancamento: Partial<LancamentoFinanceiro>) {
+    const user_id = await getCurrentUserId();
+    const { data, error } = await supabase
+      .from('lancamentos_financeiros')
+      .update(sanitizeLancamentoFinanceiro(lancamento))
+      .eq('id', id)
+      .eq('user_id', user_id)
+      .select();
+    if (error) throw error;
+    return data[0] as LancamentoFinanceiro;
+  },
+
+  async deleteLancamentoFinanceiro(id: string) {
+    const user_id = await getCurrentUserId();
+    const { error } = await supabase
+      .from('lancamentos_financeiros')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user_id);
+    if (error) throw error;
+  },
+
   // Configurações
   async getConfig() {
     try {
@@ -602,7 +794,7 @@ export const DataService = {
         [{
           user_id,
           nome: assertRequiredText(config.nome, 'Nome da loja', 80),
-          logo: normalizeOptionalText(config.logo, 120000) ?? '',
+          logo: sanitizeLogoDataUrl(config.logo),
         }],
         { onConflict: 'user_id' }
       )

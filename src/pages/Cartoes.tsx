@@ -18,8 +18,11 @@ import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Select } from '../components/ui/Select';
 import { exportRowsToCsv } from '../lib/export';
+import { dateInputTime, formatDateBR, formatMonthInput } from '../lib/date';
+import { useConfirm } from '../contexts/confirm';
 
 export const Cartoes = () => {
+  const confirm = useConfirm();
   const [cartoes, setCartoes] = useState<Cartao[]>([]);
   const [compras, setCompras] = useState<Compra[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,7 +34,7 @@ export const Cartoes = () => {
   
   // Filters state
   const [searchTerm, setSearchTerm] = useState('');
-  const [faturaMonth, setFaturaMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [faturaMonth, setFaturaMonth] = useState(formatMonthInput());
 
   // Form State
   const [formData, setFormData] = useState({
@@ -81,7 +84,7 @@ export const Cartoes = () => {
 
   const handleViewFatura = (cartao: Cartao) => {
     setViewingFaturaCartao(cartao);
-    setFaturaMonth(new Date().toISOString().slice(0, 7));
+    setFaturaMonth(formatMonthInput());
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -100,29 +103,35 @@ export const Cartoes = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir este cartão? Todas as compras associadas ficarão sem cartão.')) {
-      try {
-        await DataService.deleteCartao(id);
-        fetchData();
-      } catch (error) {
-        console.error('Erro ao excluir cartão:', error);
-      }
+    const ok = await confirm({
+      title: 'Excluir cartão?',
+      message: 'Todas as compras associadas ficarão sem cartão. Essa ação não pode ser desfeita.',
+      confirmLabel: 'Excluir cartão',
+      tone: 'danger',
+    });
+    if (!ok) return;
+
+    try {
+      await DataService.deleteCartao(id);
+      fetchData();
+    } catch (error) {
+      console.error('Erro ao excluir cartão:', error);
     }
   };
 
   const exportInvoice = async (cartaoId: string, cartaoNome: string) => {
-    const currentMonth = new Date().toISOString().slice(0, 7);
+    const currentMonth = formatMonthInput();
     const invoicePurchases = compras.filter(c => c.cartaoId === cartaoId && c.data.startsWith(currentMonth));
     
     exportRowsToCsv(invoicePurchases.map(c => ({
-      Data: new Date(c.data).toLocaleDateString('pt-BR'),
+      Data: formatDateBR(c.data),
       Valor: c.valor,
       Descrição: c.descricao
     })), `fatura_${cartaoNome}_${currentMonth}.csv`);
   };
 
   const getFaturaAtual = (cartaoId: string) => {
-    const currentMonth = new Date().toISOString().slice(0, 7);
+    const currentMonth = formatMonthInput();
     return compras
       .filter(c => c.cartaoId === cartaoId && c.data.startsWith(currentMonth))
       .reduce((acc, c) => acc + c.valor, 0);
@@ -205,20 +214,20 @@ export const Cartoes = () => {
                 )}
               </div>
 
-              <div className="space-y-4 pt-4 border-t border-zinc-800 relative z-10">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-zinc-400 text-sm">
+              <div className="space-y-4 pt-4 border-t border-zinc-800 relative z-10 min-w-0">
+                <div className="flex items-start justify-between gap-3 min-w-0">
+                  <div className="flex items-center gap-2 text-zinc-400 text-sm min-w-0">
                     <Calendar size={14} />
                     <span>Fatura Atual (Mês)</span>
                   </div>
-                  <span className="text-white font-bold">{formatCurrency(getFaturaAtual(cartao.id))}</span>
+                  <span className="money-text text-white font-bold text-right">{formatCurrency(getFaturaAtual(cartao.id))}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-zinc-400 text-sm">
+                <div className="flex items-start justify-between gap-3 min-w-0">
+                  <div className="flex items-center gap-2 text-zinc-400 text-sm min-w-0">
                     <DollarSign size={14} />
                     <span>Limite disponível</span>
                   </div>
-                  <span className="text-emerald-400 font-bold">{formatCurrency(getLimiteDisponivel(cartao))}</span>
+                  <span className="money-text text-emerald-400 font-bold text-right">{formatCurrency(getLimiteDisponivel(cartao))}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs text-zinc-500">
                   <span>Fecha dia {cartao.fechamento || '-'}</span>
@@ -348,7 +357,7 @@ export const Cartoes = () => {
                 onChange={setFaturaMonth}
                 placeholder="Selecione..."
                 options={Array.from(new Set([
-                  new Date().toISOString().slice(0, 7),
+                  formatMonthInput(),
                   ...compras.filter(c => c.cartaoId === viewingFaturaCartao?.id).map(c => c.data.slice(0, 7))
                 ])).sort().reverse().map(m => {
                   const [ano, mes] = m.split('-');
@@ -365,16 +374,16 @@ export const Cartoes = () => {
           <div className="max-h-[50vh] overflow-y-auto pr-2 space-y-2 custom-scrollbar">
             {compras
               .filter(c => c.cartaoId === viewingFaturaCartao?.id && c.data.startsWith(faturaMonth))
-              .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
+              .sort((a, b) => dateInputTime(b.data) - dateInputTime(a.data))
               .map(c => (
-                <div key={c.id} className="p-4 bg-zinc-800/20 hover:bg-zinc-800/40 transition-colors border border-zinc-800 rounded-xl flex justify-between items-center group">
-                  <div>
-                    <div className="text-white text-sm font-semibold mb-1">{new Date(c.data).toLocaleDateString('pt-BR')}</div>
+                <div key={c.id} className="p-4 bg-zinc-800/20 hover:bg-zinc-800/40 transition-colors border border-zinc-800 rounded-xl flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 group min-w-0">
+                  <div className="min-w-0">
+                    <div className="text-white text-sm font-semibold mb-1">{formatDateBR(c.data)}</div>
                     <div className="text-zinc-500 text-xs truncate max-w-[200px] sm:max-w-[280px]">
                       {c.descricao || 'Sem descrição'}
                     </div>
                   </div>
-                  <div className="text-rose-400 font-bold bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/20">
+                  <div className="money-text text-rose-400 font-bold bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/20 sm:text-right">
                     {formatCurrency(c.valor)}
                   </div>
                 </div>
@@ -389,9 +398,9 @@ export const Cartoes = () => {
             )}
           </div>
           
-          <div className="pt-4 mt-2 border-t border-zinc-800 flex justify-between items-center">
+          <div className="pt-4 mt-2 border-t border-zinc-800 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 min-w-0">
             <span className="text-zinc-400 font-medium">Total da Fatura:</span>
-            <span className="text-2xl font-bold text-white font-outfit">
+            <span className="money-text stat-card-value text-2xl font-bold text-white font-outfit sm:text-right">
               {formatCurrency(
                 compras
                   .filter(c => c.cartaoId === viewingFaturaCartao?.id && c.data.startsWith(faturaMonth))

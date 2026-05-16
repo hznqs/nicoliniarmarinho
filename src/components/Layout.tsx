@@ -11,7 +11,9 @@ import {
   Menu,
   X,
   Scissors,
-  Boxes
+  Boxes,
+  Landmark,
+  CalendarDays
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { DataService } from '../lib/services';
@@ -45,6 +47,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     { to: '/produtos', icon: Boxes, label: 'Produtos' },
     { to: '/fornecedores', icon: Truck, label: 'Fornecedores' },
     { to: '/compras', icon: ShoppingBag, label: 'Compras' },
+    { to: '/financeiro', icon: Landmark, label: 'Financeiro' },
+    { to: '/calendario', icon: CalendarDays, label: 'Calendário' },
     { to: '/cartoes', icon: CreditCard, label: 'Cartões' },
     { to: '/configuracoes', icon: Settings, label: 'Configurações' },
   ];

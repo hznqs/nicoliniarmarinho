@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { Checkbox } from '../components/ui/Checkbox';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Select } from '../components/ui/Select';
@@ -20,6 +21,7 @@ import { DataService } from '../lib/services';
 import type { Produto } from '../lib/services';
 import { getErrorMessage } from '../lib/error';
 import { exportRowsToCsv } from '../lib/export';
+import { useConfirm } from '../contexts/confirm';
 
 const initialForm = {
   nome: '',
@@ -33,6 +35,7 @@ const initialForm = {
 };
 
 export const Produtos = () => {
+  const confirm = useConfirm();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -142,7 +145,14 @@ export const Produtos = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Tem certeza que deseja excluir este produto?')) return;
+    const ok = await confirm({
+      title: 'Excluir produto?',
+      message: 'O produto será removido do catálogo e não poderá ser usado em novas vendas.',
+      confirmLabel: 'Excluir produto',
+      tone: 'danger',
+    });
+    if (!ok) return;
+
     try {
       await DataService.deleteProduto(id);
       fetchProdutos();
@@ -182,26 +192,26 @@ export const Produtos = () => {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-5">
+      <div className="summary-card-grid grid gap-4">
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-5 min-w-0 overflow-hidden">
           <span className="text-xs font-semibold uppercase text-zinc-500">Produtos ativos</span>
-          <div className="mt-3 flex items-center justify-between">
-            <strong className="text-2xl font-bold text-white">{stats.ativos}</strong>
-            <Boxes className="text-primary" size={22} />
+          <div className="mt-3 flex items-center justify-between gap-3 min-w-0">
+            <strong className="stat-card-value text-2xl font-bold text-white">{stats.ativos}</strong>
+            <Boxes className="text-primary shrink-0" size={22} />
           </div>
         </div>
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-5">
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-5 min-w-0 overflow-hidden">
           <span className="text-xs font-semibold uppercase text-zinc-500">Baixo estoque</span>
-          <div className="mt-3 flex items-center justify-between">
-            <strong className="text-2xl font-bold text-amber-400">{stats.baixoEstoque}</strong>
-            <AlertTriangle className="text-amber-400" size={22} />
+          <div className="mt-3 flex items-center justify-between gap-3 min-w-0">
+            <strong className="stat-card-value text-2xl font-bold text-amber-400">{stats.baixoEstoque}</strong>
+            <AlertTriangle className="text-amber-400 shrink-0" size={22} />
           </div>
         </div>
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-5 md:col-span-2">
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-5 min-w-0 overflow-hidden">
           <span className="text-xs font-semibold uppercase text-zinc-500">Valor em estoque</span>
-          <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <strong className="text-2xl font-bold text-white">{formatCurrency(stats.valorEstoque)}</strong>
-            <span className="text-sm text-zinc-400">Margem média: {formatCurrency(stats.margemMedia)}</span>
+          <div className="mt-3 flex flex-col gap-2 min-w-0">
+            <strong className="money-text stat-card-value text-2xl font-bold text-white">{formatCurrency(stats.valorEstoque)}</strong>
+            <span className="money-text text-sm text-zinc-400">Margem média: {formatCurrency(stats.margemMedia)}</span>
           </div>
         </div>
       </div>
@@ -312,9 +322,9 @@ export const Produtos = () => {
                           {produto.estoque} un.
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-zinc-300" data-label="Custo">{formatCurrency(produto.custo)}</td>
-                      <td className="px-6 py-4 text-white font-semibold" data-label="Venda">{formatCurrency(produto.precoVenda)}</td>
-                      <td className="px-6 py-4 text-emerald-400 font-semibold" data-label="Margem">{formatCurrency(produto.precoVenda - produto.custo)}</td>
+                      <td className="px-6 py-4 text-zinc-300" data-label="Custo"><span className="money-text">{formatCurrency(produto.custo)}</span></td>
+                      <td className="px-6 py-4 text-white font-semibold" data-label="Venda"><span className="money-text">{formatCurrency(produto.precoVenda)}</span></td>
+                      <td className="px-6 py-4 text-emerald-400 font-semibold" data-label="Margem"><span className="money-text">{formatCurrency(produto.precoVenda - produto.custo)}</span></td>
                       <td className="px-6 py-4 text-right" data-label="Ações">
                         <div className="flex items-center justify-end gap-2">
                           <button
@@ -415,18 +425,13 @@ export const Produtos = () => {
               required
             />
           </div>
-          <label className="flex items-center justify-between gap-4 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3">
-            <span>
-              <span className="block text-sm font-semibold text-white">Produto ativo</span>
-              <span className="block text-xs text-zinc-500">Itens inativos ficam fora dos indicadores.</span>
-            </span>
-            <input
-              type="checkbox"
-              checked={formData.ativo}
-              onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })}
-              className="h-5 w-5 accent-[var(--app-primary-hex)]"
-            />
-          </label>
+          <Checkbox
+            label="Produto ativo"
+            description="Itens inativos ficam fora dos indicadores."
+            checked={formData.ativo}
+            onCheckedChange={(checked) => setFormData({ ...formData, ativo: checked })}
+            align="between"
+          />
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-3">
             <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>
               Cancelar

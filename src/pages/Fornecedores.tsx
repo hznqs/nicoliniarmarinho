@@ -16,8 +16,10 @@ import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Select } from '../components/ui/Select';
 import { exportRowsToCsv } from '../lib/export';
+import { useConfirm } from '../contexts/confirm';
 
 export const Fornecedores = () => {
+  const confirm = useConfirm();
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -79,13 +81,19 @@ export const Fornecedores = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir este fornecedor?')) {
-      try {
-        await DataService.deleteFornecedor(id);
-        fetchFornecedores();
-      } catch (error) {
-        console.error('Erro ao excluir fornecedor:', error);
-      }
+    const ok = await confirm({
+      title: 'Excluir fornecedor?',
+      message: 'O fornecedor será removido da sua base. As informações vinculadas podem ficar incompletas.',
+      confirmLabel: 'Excluir fornecedor',
+      tone: 'danger',
+    });
+    if (!ok) return;
+
+    try {
+      await DataService.deleteFornecedor(id);
+      fetchFornecedores();
+    } catch (error) {
+      console.error('Erro ao excluir fornecedor:', error);
     }
   };
 

@@ -1,6 +1,9 @@
 # Ignorar arquivos com chaves sensíveis
-js/env.js
 .env
+.env.*
+!.env.example
+js/env.js
+legacy-html/js/env.js
 
 # Pastas de Editores
 .vscode/

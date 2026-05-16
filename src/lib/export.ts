@@ -1,5 +1,6 @@
 const escapeCsvValue = (value: unknown) => {
-  const text = String(value ?? '');
+  const rawText = String(value ?? '');
+  const text = /^[=+\-@\t\r]/.test(rawText) ? `'${rawText}` : rawText;
   if (/[",\n;]/.test(text)) {
     return `"${text.replace(/"/g, '""')}"`;
   }
