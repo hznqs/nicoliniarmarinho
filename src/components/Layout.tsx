@@ -8,6 +8,7 @@ import {
   CreditCard, 
   Settings, 
   LogOut,
+  Loader2,
   Menu,
   X,
   Scissors,
@@ -20,11 +21,13 @@ import { DataService } from '../lib/services';
 import { applyBrowserBranding } from '../lib/browserBranding';
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
-  const { signOut, user } = useAuth();
+  const { signOut, user, role } = useAuth();
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [config, setConfig] = useState({ nome: 'Armarinho', logo: '', favicon_logo: '' });
   const hasLogo = Boolean(config.logo);
+  const roleLabel = role === 'admin' ? 'Administrador' : role === 'tester' ? 'Tester' : 'Usuário';
 
   const fetchConfig = async () => {
     try {
@@ -57,8 +60,14 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   ];
 
   const handleLogout = async () => {
-    await signOut();
-    navigate('/login');
+    setLoggingOut(true);
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Erro ao sair:', error);
+    } finally {
+      navigate('/login', { replace: true });
+    }
   };
 
   const sidebarStyle: React.CSSProperties = {
@@ -165,10 +174,29 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 <p className="text-sm truncate mt-1" style={{ color: 'var(--sidebar-text-color, #f4f4f5)' }}>
                   {user.email}
                 </p>
+                <span
+                  className="mt-2 inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide"
+                  style={{
+                    backgroundColor: role === 'admin'
+                      ? 'rgba(245,158,11,0.16)'
+                      : role === 'tester'
+                        ? 'rgba(59,130,246,0.16)'
+                        : 'rgba(255,255,255,0.07)',
+                    color: role === 'admin'
+                      ? '#fbbf24'
+                      : role === 'tester'
+                        ? '#60a5fa'
+                        : 'var(--sidebar-muted-color, rgba(255,255,255,0.55))',
+                  }}
+                >
+                  {roleLabel}
+                </span>
               </div>
             )}
             <button
               onClick={handleLogout}
+              disabled={loggingOut}
+              aria-busy={loggingOut}
               className="flex items-center gap-3 w-full px-4 py-3 rounded-xl transition-all duration-200"
               style={{ color: 'var(--sidebar-muted-color, rgba(255,255,255,0.45))' }}
               onMouseEnter={e => {
@@ -180,8 +208,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
               }}
             >
-              <LogOut size={20} />
-              <span className="text-sm font-medium">Sair do Sistema</span>
+              {loggingOut ? <Loader2 size={20} className="animate-spin" /> : <LogOut size={20} />}
+              <span className="text-sm font-medium">{loggingOut ? 'Saindo...' : 'Sair do Sistema'}</span>
             </button>
           </div>
         </div>

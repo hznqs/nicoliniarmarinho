@@ -18,6 +18,13 @@ CREATE TABLE IF NOT EXISTS config (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS user_roles (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'tester', 'user')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS vendas (
   id TEXT PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -150,6 +157,13 @@ ALTER TABLE config ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(i
 ALTER TABLE config ADD COLUMN IF NOT EXISTS favicon_logo TEXT NOT NULL DEFAULT '';
 ALTER TABLE config ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 CREATE UNIQUE INDEX IF NOT EXISTS config_user_id_unique ON config(user_id);
+
+CREATE TABLE IF NOT EXISTS user_roles (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'tester', 'user')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
 ALTER TABLE vendas ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE vendas ADD COLUMN IF NOT EXISTS descricao TEXT;
@@ -294,6 +308,7 @@ CREATE INDEX IF NOT EXISTS cartao_fatura_pagamentos_user_cartao_idx ON cartao_fa
 -- ==========================================
 
 ALTER TABLE config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vendas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE fornecedores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cartoes ENABLE ROW LEVEL SECURITY;
@@ -304,6 +319,7 @@ ALTER TABLE lancamentos_financeiros ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cartao_fatura_pagamentos ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Permitir acesso total Config" ON config;
+DROP POLICY IF EXISTS "Usuários leem seu papel" ON user_roles;
 DROP POLICY IF EXISTS "Permitir acesso total Vendas" ON vendas;
 DROP POLICY IF EXISTS "Permitir acesso total Fornecedores" ON fornecedores;
 DROP POLICY IF EXISTS "Permitir acesso total Cartões" ON cartoes;
@@ -323,6 +339,10 @@ CREATE POLICY "Usuários acessam sua configuração"
   ON config FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Usuários leem seu papel"
+  ON user_roles FOR SELECT
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "Usuários acessam suas vendas"
   ON vendas FOR ALL
@@ -376,6 +396,7 @@ DECLARE
 BEGIN
   FOREACH table_name IN ARRAY ARRAY[
     'config',
+    'user_roles',
     'vendas',
     'fornecedores',
     'cartoes',
@@ -515,3 +536,13 @@ JOIN information_schema.constraint_column_usage AS ccu
 WHERE tc.constraint_type = 'FOREIGN KEY'
   AND tc.table_schema = 'public'
   AND tc.table_name = 'venda_itens';
+
+-- ==========================================
+-- EXEMPLO: DEFINIR PAPEL DE TESTE/ADMIN
+-- ==========================================
+-- 1) Pegue o id do usuário em Authentication > Users.
+-- 2) Troque o UUID abaixo pelo id real e escolha: 'admin', 'tester' ou 'user'.
+-- INSERT INTO user_roles (user_id, role)
+-- VALUES ('00000000-0000-0000-0000-000000000000', 'tester')
+-- ON CONFLICT (user_id) DO UPDATE
+-- SET role = EXCLUDED.role, updated_at = NOW();
