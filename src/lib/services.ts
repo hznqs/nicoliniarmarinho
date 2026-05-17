@@ -106,6 +106,7 @@ export interface Config {
   user_id?: string;
   nome: string;
   logo: string;
+  favicon_logo?: string;
 }
 
 const getCurrentUserId = async () => {
@@ -777,10 +778,10 @@ export const DataService = {
         .eq('user_id', user_id)
         .maybeSingle();
       if (error) throw error;
-      if (!data) return { nome: 'Armarinho', logo: '' } as Config;
-      return data as Config;
+      if (!data) return { nome: 'Armarinho', logo: '', favicon_logo: '' } as Config;
+      return { ...data, favicon_logo: data.favicon_logo || '' } as Config;
     } catch {
-      return { nome: 'Armarinho', logo: '' } as Config;
+      return { nome: 'Armarinho', logo: '', favicon_logo: '' } as Config;
     }
   },
 
@@ -795,12 +796,18 @@ export const DataService = {
           user_id,
           nome: assertRequiredText(config.nome, 'Nome da loja', 80),
           logo: sanitizeLogoDataUrl(config.logo),
+          favicon_logo: sanitizeLogoDataUrl(config.favicon_logo),
         }],
         { onConflict: 'user_id' }
       )
       .select();
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === 'PGRST204' && error.message?.includes('favicon_logo')) {
+        throw new Error('A coluna favicon_logo ainda não existe no Supabase. Rode o SQL atualizado em legacy-html/supabase_schema.sql e tente salvar novamente.');
+      }
+      throw error;
+    }
     return data[0] as Config;
   }
 };

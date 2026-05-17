@@ -14,7 +14,8 @@ import {
   Layout,
   Sliders,
   RotateCcw,
-  Monitor
+  Monitor,
+  Globe2
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { DataService } from '../lib/services';
@@ -34,6 +35,7 @@ import {
   type ThemeSettings,
 } from '../lib/theme';
 import { useConfirm } from '../contexts/confirm';
+import { applyBrowserBranding } from '../lib/browserBranding';
 
 // ── Preset Palettes ─────────────────────────────────────────────────────────
 const COLOR_PRESETS = [
@@ -46,6 +48,57 @@ const COLOR_PRESETS = [
   { label: 'Ciano', primary: '#06b6d4', bg: '#05100e' },
   { label: 'Vermelho', primary: '#ef4444', bg: '#100505' },
 ];
+
+const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+
+const resizeImageFile = (file: File, maxSize: number, square = false) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      if (!context) {
+        reject(new Error('Não foi possível processar esta imagem.'));
+        return;
+      }
+
+      if (square) {
+        canvas.width = maxSize;
+        canvas.height = maxSize;
+        const scale = Math.min(maxSize / img.width, maxSize / img.height);
+        const width = img.width * scale;
+        const height = img.height * scale;
+        context.clearRect(0, 0, maxSize, maxSize);
+        context.drawImage(img, (maxSize - width) / 2, (maxSize - height) / 2, width, height);
+        resolve(canvas.toDataURL('image/png'));
+        return;
+      }
+
+      let width = img.width;
+      let height = img.height;
+      if (width > height) {
+        if (width > maxSize) {
+          height *= maxSize / width;
+          width = maxSize;
+        }
+      } else if (height > maxSize) {
+        width *= maxSize / height;
+        height = maxSize;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      context.clearRect(0, 0, width, height);
+      context.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => reject(new Error('Não foi possível processar esta imagem.'));
+    img.src = event.target?.result as string;
+  };
+  reader.onerror = () => reject(new Error('Não foi possível ler o arquivo selecionado.'));
+  reader.readAsDataURL(file);
+});
 
 // ── Option Card ───────────────────────────────────────────────────────────────
 const OptionCard = ({
@@ -92,6 +145,61 @@ const SectionHeader = ({ icon: Icon, title, subtitle }: { icon: LucideIcon; titl
   </div>
 );
 
+const ImageUploadControl = ({
+  id,
+  label,
+  helper,
+  value,
+  placeholderIcon: PlaceholderIcon,
+  onClear,
+  onChange,
+  previewClassName = 'w-20 h-20',
+}: {
+  id: string;
+  label: string;
+  helper: string;
+  value: string;
+  placeholderIcon: LucideIcon;
+  onClear: () => void;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  previewClassName?: string;
+}) => (
+  <div className="space-y-3 min-w-0">
+    <label className="text-sm font-medium text-zinc-400">{label}</label>
+    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+      <div className="relative group shrink-0">
+        <div
+          className={`${previewClassName} flex items-center justify-center overflow-hidden ${
+            value ? 'bg-transparent border-0 rounded-none' : 'rounded-2xl bg-zinc-950 border border-zinc-800'
+          }`}
+        >
+          {value
+            ? <img src={value} alt={label} className="max-w-full max-h-full object-contain" />
+            : <PlaceholderIcon size={28} className="text-zinc-700" />
+          }
+        </div>
+        {value && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="absolute -top-2 -right-2 p-1.5 bg-rose-500 text-white rounded-full opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity shadow-lg"
+            title={`Remover ${label.toLowerCase()}`}
+          >
+            <Trash2 size={12} />
+          </button>
+        )}
+      </div>
+      <div className="min-w-0">
+        <input type="file" id={id} className="hidden" accept="image/png,image/jpeg,image/webp" onChange={onChange} />
+        <label htmlFor={id} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white text-sm rounded-xl cursor-pointer transition-all border border-zinc-700">
+          <UploadCloud size={16} /> Escolher Imagem
+        </label>
+        <p className="text-[11px] text-zinc-600 mt-2 max-w-xs">{helper}</p>
+      </div>
+    </div>
+  </div>
+);
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export const Configuracoes = () => {
   const confirm = useConfirm();
@@ -103,6 +211,7 @@ export const Configuracoes = () => {
   // Loja
   const [nome, setNome] = useState('');
   const [logo, setLogo] = useState('');
+  const [faviconLogo, setFaviconLogo] = useState('');
 
   // Tema
   const [theme, setTheme] = useState<ThemeSettings>(() => loadFullTheme());
@@ -113,6 +222,7 @@ export const Configuracoes = () => {
         const data = await DataService.getConfig();
         setNome(data.nome);
         setLogo(data.logo);
+        setFaviconLogo(data.favicon_logo || '');
       } catch (error) {
         console.error('Erro ao buscar configurações:', error);
       } finally {
@@ -140,41 +250,38 @@ export const Configuracoes = () => {
     updateTheme({ primaryColor: preset.primary, bgColor: preset.bg });
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    options: { target: 'logo' | 'favicon'; maxSize: number; square?: boolean; label: string }
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      setError('Use apenas imagens PNG, JPG ou WEBP para o logotipo.');
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      setError(`Use apenas imagens PNG, JPG ou WEBP para ${options.label}.`);
       e.target.value = '';
       return;
     }
 
     if (file.size > 500 * 1024) {
-      setError('O logotipo deve ter no máximo 500kb.');
+      setError(`${options.label} deve ter no máximo 500kb.`);
       e.target.value = '';
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX = 200;
-        let w = img.width, h = img.height;
-        if (w > h) { if (w > MAX) { h *= MAX / w; w = MAX; } }
-        else { if (h > MAX) { w *= MAX / h; h = MAX; } }
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
-        setLogo(canvas.toDataURL('image/png'));
-      };
-      img.onerror = () => setError('Não foi possível processar esta imagem.');
-      img.src = event.target?.result as string;
-    };
-    reader.onerror = () => setError('Não foi possível ler o arquivo selecionado.');
-    reader.readAsDataURL(file);
+    resizeImageFile(file, options.maxSize, options.square)
+      .then((dataUrl) => {
+        setError(null);
+        if (options.target === 'favicon') {
+          setFaviconLogo(dataUrl);
+          return;
+        }
+        setLogo(dataUrl);
+      })
+      .catch((err: unknown) => setError(getErrorMessage(err, 'Não foi possível processar esta imagem.')))
+      .finally(() => {
+        e.target.value = '';
+      });
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -183,7 +290,8 @@ export const Configuracoes = () => {
     setError(null);
     setSaved(false);
     try {
-      await DataService.saveConfig({ nome, logo });
+      await DataService.saveConfig({ nome, logo, favicon_logo: faviconLogo });
+      applyBrowserBranding({ nome, favicon_logo: faviconLogo });
       setSaved(true);
       setTimeout(() => setSaved(false), 4000);
       window.dispatchEvent(new Event('config-updated'));
@@ -237,7 +345,7 @@ export const Configuracoes = () => {
 
         {/* ── Perfil da Loja ── */}
         <div className="bg-zinc-900/50 backdrop-blur-xl border border-zinc-800 rounded-3xl overflow-hidden">
-          <SectionHeader icon={Store} title="Perfil da Loja" subtitle="Nome e logotipo exibidos no sistema" />
+          <SectionHeader icon={Store} title="Perfil da Loja" subtitle="Nome, logotipo do sistema e ícone da aba do navegador" />
           <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-3">
               <Input
@@ -249,38 +357,26 @@ export const Configuracoes = () => {
               />
               <p className="text-xs text-zinc-500">Aparece no menu lateral e relatórios exportados.</p>
             </div>
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-zinc-400">Logotipo</label>
-              <div className="flex items-center gap-5">
-                <div className="relative group shrink-0">
-                  <div
-                    className={`w-20 h-20 flex items-center justify-center overflow-hidden ${
-                      logo ? 'bg-transparent border-0 rounded-none' : 'rounded-2xl bg-zinc-950 border border-zinc-800'
-                    }`}
-                  >
-                    {logo
-                      ? <img src={logo} alt="Logo" className="max-w-full max-h-full object-contain" />
-                      : <Settings size={28} className="text-zinc-700" />
-                    }
-                  </div>
-                  {logo && (
-                    <button
-                      type="button"
-                      onClick={() => setLogo('')}
-                      className="absolute -top-2 -right-2 p-1.5 bg-rose-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  )}
-                </div>
-                <div>
-                  <input type="file" id="logo-upload" className="hidden" accept="image/png,image/jpeg,image/webp" onChange={handleFileUpload} />
-                  <label htmlFor="logo-upload" className="inline-flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white text-sm rounded-xl cursor-pointer transition-all border border-zinc-700">
-                    <UploadCloud size={16} /> Escolher Imagem
-                  </label>
-                  <p className="text-[11px] text-zinc-600 mt-2">PNG, JPG ou WEBP, max 500kb. O sistema não adiciona fundo à logo.</p>
-                </div>
-              </div>
+            <div className="grid grid-cols-1 gap-7">
+              <ImageUploadControl
+                id="logo-upload"
+                label="Logotipo do sistema"
+                helper="PNG, JPG ou WEBP, max 500kb. O sistema não adiciona fundo à logo."
+                value={logo}
+                placeholderIcon={Settings}
+                onClear={() => setLogo('')}
+                onChange={(e) => handleFileUpload(e, { target: 'logo', maxSize: 200, label: 'o logotipo' })}
+              />
+              <ImageUploadControl
+                id="favicon-upload"
+                label="Logo do navegador"
+                helper="Usada na aba do navegador. Será salva em PNG quadrado e leve para carregar rápido."
+                value={faviconLogo}
+                placeholderIcon={Globe2}
+                previewClassName="w-14 h-14"
+                onClear={() => setFaviconLogo('')}
+                onChange={(e) => handleFileUpload(e, { target: 'favicon', maxSize: 64, square: true, label: 'a logo do navegador' })}
+              />
             </div>
           </div>
         </div>

@@ -17,18 +17,20 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { DataService } from '../lib/services';
+import { applyBrowserBranding } from '../lib/browserBranding';
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [config, setConfig] = useState({ nome: 'Armarinho', logo: '' });
+  const [config, setConfig] = useState({ nome: 'Armarinho', logo: '', favicon_logo: '' });
   const hasLogo = Boolean(config.logo);
 
   const fetchConfig = async () => {
     try {
       const data = await DataService.getConfig();
-      setConfig(data);
+      setConfig({ nome: data.nome, logo: data.logo, favicon_logo: data.favicon_logo || '' });
+      applyBrowserBranding(data);
     } catch (error) {
       console.error('Erro ao buscar branding:', error);
     }

@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS config (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   nome TEXT NOT NULL DEFAULT 'Armarinho',
   logo TEXT NOT NULL DEFAULT '',
+  favicon_logo TEXT NOT NULL DEFAULT '',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -146,6 +147,7 @@ END $$;
 -- ==========================================
 
 ALTER TABLE config ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE config ADD COLUMN IF NOT EXISTS favicon_logo TEXT NOT NULL DEFAULT '';
 ALTER TABLE config ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 CREATE UNIQUE INDEX IF NOT EXISTS config_user_id_unique ON config(user_id);
 
