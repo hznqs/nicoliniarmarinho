@@ -253,9 +253,13 @@ export const Configuracoes = () => {
               <label className="text-sm font-medium text-zinc-400">Logotipo</label>
               <div className="flex items-center gap-5">
                 <div className="relative group shrink-0">
-                  <div className="w-20 h-20 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center overflow-hidden">
+                  <div
+                    className={`w-20 h-20 flex items-center justify-center overflow-hidden ${
+                      logo ? 'bg-transparent border-0 rounded-none' : 'rounded-2xl bg-zinc-950 border border-zinc-800'
+                    }`}
+                  >
                     {logo
-                      ? <img src={logo} alt="Logo" className="w-full h-full object-cover" />
+                      ? <img src={logo} alt="Logo" className="max-w-full max-h-full object-contain" />
                       : <Settings size={28} className="text-zinc-700" />
                     }
                   </div>
@@ -274,7 +278,7 @@ export const Configuracoes = () => {
                   <label htmlFor="logo-upload" className="inline-flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white text-sm rounded-xl cursor-pointer transition-all border border-zinc-700">
                     <UploadCloud size={16} /> Escolher Imagem
                   </label>
-                  <p className="text-[11px] text-zinc-600 mt-2">PNG ou JPG, max 500kb.</p>
+                  <p className="text-[11px] text-zinc-600 mt-2">PNG, JPG ou WEBP, max 500kb. O sistema não adiciona fundo à logo.</p>
                 </div>
               </div>
             </div>

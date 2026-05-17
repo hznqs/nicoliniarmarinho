@@ -235,9 +235,6 @@ export const Login = () => {
           </div>
         </div>
 
-        <p className="mt-8 text-center text-zinc-600 text-xs uppercase tracking-widest">
-          Nicolini Armarinho &copy; 2026
-        </p>
       </div>
     </div>
   );

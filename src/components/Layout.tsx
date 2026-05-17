@@ -23,6 +23,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [config, setConfig] = useState({ nome: 'Armarinho', logo: '' });
+  const hasLogo = Boolean(config.logo);
 
   const fetchConfig = async () => {
     try {
@@ -91,9 +92,12 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           {/* Logo/Brand */}
           <div className="p-6 flex items-center justify-between" style={{ borderBottomColor: 'var(--sidebar-border-color, #27272a)', borderBottomWidth: '1px', borderBottomStyle: 'solid' }}>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center overflow-hidden shrink-0" style={{ color: 'var(--app-primary-text, #09090b)' }}>
-                {config.logo
-                  ? <img src={config.logo} alt="Logo" className="w-full h-full object-cover" />
+              <div
+                className={`w-10 h-10 flex items-center justify-center overflow-hidden shrink-0 ${hasLogo ? 'bg-transparent rounded-none' : 'bg-primary rounded-xl'}`}
+                style={{ color: 'var(--app-primary-text, #09090b)' }}
+              >
+                {hasLogo
+                  ? <img src={config.logo} alt="Logo" className="max-w-full max-h-full object-contain" />
                   : <Scissors size={22} />
                 }
               </div>
@@ -194,7 +198,10 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           }}
         >
           <div className="flex items-center gap-2">
-            <Scissors className="text-primary" size={22} />
+            {hasLogo
+              ? <img src={config.logo} alt="Logo" className="h-7 w-7 object-contain shrink-0" />
+              : <Scissors className="text-primary shrink-0" size={22} />
+            }
             <span className="text-lg font-bold font-outfit truncate max-w-[70vw]" style={{ color: 'var(--sidebar-text-color, #f4f4f5)' }}>{config.nome}</span>
           </div>
           <button type="button" title="Abrir menu" onClick={() => setIsSidebarOpen(true)} style={{ color: 'var(--sidebar-muted-color, rgba(255,255,255,0.5))' }}>
