@@ -226,7 +226,7 @@ export const Financeiro = () => {
         </div>
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 min-w-0">
           <div className="flex items-center justify-between gap-3 mb-4">
-            <span className="text-sm text-zinc-400 font-semibold">Distribuição</span>
+            <span className="text-sm text-zinc-400 font-semibold min-w-0 break-words">Distribuição de lucro</span>
             <Landmark size={20} className="text-emerald-400" />
           </div>
           <strong className="money-text text-2xl font-bold text-white">{formatCurrency(resumo.distribuicao_lucro)}</strong>
