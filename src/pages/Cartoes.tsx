@@ -20,6 +20,7 @@ import { Select } from '../components/ui/Select';
 import { exportRowsToCsv } from '../lib/export';
 import { dateInputTime, formatDateBR, formatMonthInput } from '../lib/date';
 import { useConfirm } from '../contexts/confirm';
+import { getCardInvoiceInstallments, getCardInvoiceTotal, getCardPurchaseInstallments } from '../lib/cardInvoices';
 
 export const Cartoes = () => {
   const confirm = useConfirm();
@@ -119,26 +120,25 @@ export const Cartoes = () => {
     }
   };
 
-  const exportInvoice = async (cartaoId: string, cartaoNome: string) => {
+  const exportInvoice = async (cartao: Cartao) => {
     const currentMonth = formatMonthInput();
-    const invoicePurchases = compras.filter(c => c.cartaoId === cartaoId && c.data.startsWith(currentMonth));
+    const invoicePurchases = getCardInvoiceInstallments(compras, cartao, currentMonth);
     
     exportRowsToCsv(invoicePurchases.map(c => ({
-      Data: formatDateBR(c.data),
+      Data: formatDateBR(c.compra.data),
+      Parcela: `${c.parcela}/${c.parcelas}`,
       Valor: c.valor,
-      Descrição: c.descricao
-    })), `fatura_${cartaoNome}_${currentMonth}.csv`);
+      Descrição: c.compra.descricao
+    })), `fatura_${cartao.nome}_${currentMonth}.csv`);
   };
 
-  const getFaturaAtual = (cartaoId: string) => {
+  const getFaturaAtual = (cartao: Cartao) => {
     const currentMonth = formatMonthInput();
-    return compras
-      .filter(c => c.cartaoId === cartaoId && c.data.startsWith(currentMonth))
-      .reduce((acc, c) => acc + c.valor, 0);
+    return getCardInvoiceTotal(compras, cartao, currentMonth);
   };
 
   const getLimiteDisponivel = (cartao: Cartao) => {
-    return Math.max((cartao.limite || 0) - getFaturaAtual(cartao.id), 0);
+    return Math.max((cartao.limite || 0) - getFaturaAtual(cartao), 0);
   };
 
   const formatCurrency = (val: number) => {
@@ -220,7 +220,7 @@ export const Cartoes = () => {
                     <Calendar size={14} />
                     <span>Fatura Atual (Mês)</span>
                   </div>
-                  <span className="money-text text-white font-bold text-right">{formatCurrency(getFaturaAtual(cartao.id))}</span>
+                  <span className="money-text text-white font-bold text-right">{formatCurrency(getFaturaAtual(cartao))}</span>
                 </div>
                 <div className="flex items-start justify-between gap-3 min-w-0">
                   <div className="flex items-center gap-2 text-zinc-400 text-sm min-w-0">
@@ -248,7 +248,7 @@ export const Cartoes = () => {
                     variant="outline" 
                     fullWidth 
                     size="sm"
-                    onClick={() => exportInvoice(cartao.id, cartao.nome)}
+                    onClick={() => exportInvoice(cartao)}
                     leftIcon={<FileSpreadsheet size={16} />}
                   >
                     Exportar
@@ -358,7 +358,11 @@ export const Cartoes = () => {
                 placeholder="Selecione..."
                 options={Array.from(new Set([
                   formatMonthInput(),
-                  ...compras.filter(c => c.cartaoId === viewingFaturaCartao?.id).map(c => c.data.slice(0, 7))
+                  ...(viewingFaturaCartao
+                    ? compras
+                      .filter(c => c.cartaoId === viewingFaturaCartao.id)
+                      .flatMap(c => getCardPurchaseInstallments(c, viewingFaturaCartao).map((installment) => installment.mes))
+                    : [])
                 ])).sort().reverse().map(m => {
                   const [ano, mes] = m.split('-');
                   const date = new Date(parseInt(ano), parseInt(mes) - 1);
@@ -372,24 +376,26 @@ export const Cartoes = () => {
           </div>
           
           <div className="max-h-[50vh] overflow-y-auto pr-2 space-y-2 custom-scrollbar">
-            {compras
-              .filter(c => c.cartaoId === viewingFaturaCartao?.id && c.data.startsWith(faturaMonth))
-              .sort((a, b) => dateInputTime(b.data) - dateInputTime(a.data))
-              .map(c => (
-                <div key={c.id} className="p-4 bg-zinc-800/20 hover:bg-zinc-800/40 transition-colors border border-zinc-800 rounded-xl flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 group min-w-0">
+            {viewingFaturaCartao && getCardInvoiceInstallments(compras, viewingFaturaCartao, faturaMonth)
+              .sort((a, b) => dateInputTime(b.compra.data) - dateInputTime(a.compra.data) || b.parcela - a.parcela)
+              .map((installment) => (
+                <div key={`${installment.compra.id}-${installment.parcela}`} className="p-4 bg-zinc-800/20 hover:bg-zinc-800/40 transition-colors border border-zinc-800 rounded-xl flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 group min-w-0">
                   <div className="min-w-0">
-                    <div className="text-white text-sm font-semibold mb-1">{formatDateBR(c.data)}</div>
+                    <div className="text-white text-sm font-semibold mb-1">{formatDateBR(installment.compra.data)}</div>
                     <div className="text-zinc-500 text-xs truncate max-w-[200px] sm:max-w-[280px]">
-                      {c.descricao || 'Sem descrição'}
+                      {installment.compra.descricao || 'Sem descrição'}
+                    </div>
+                    <div className="text-xs text-primary mt-1 font-semibold">
+                      Parcela {installment.parcela}/{installment.parcelas}
                     </div>
                   </div>
                   <div className="money-text text-rose-400 font-bold bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/20 sm:text-right">
-                    {formatCurrency(c.valor)}
+                    {formatCurrency(installment.valor)}
                   </div>
                 </div>
               ))}
             
-            {compras.filter(c => c.cartaoId === viewingFaturaCartao?.id && c.data.startsWith(faturaMonth)).length === 0 && (
+            {(!viewingFaturaCartao || getCardInvoiceInstallments(compras, viewingFaturaCartao, faturaMonth).length === 0) && (
               <div className="text-center py-10 flex flex-col items-center justify-center bg-zinc-900/20 rounded-xl border border-dashed border-zinc-800">
                 <DollarSign className="w-10 h-10 text-zinc-600 mb-3" />
                 <span className="text-zinc-500 font-medium">Nenhuma compra neste cartão.</span>
@@ -402,9 +408,9 @@ export const Cartoes = () => {
             <span className="text-zinc-400 font-medium">Total da Fatura:</span>
             <span className="money-text stat-card-value text-2xl font-bold text-white font-outfit sm:text-right">
               {formatCurrency(
-                compras
-                  .filter(c => c.cartaoId === viewingFaturaCartao?.id && c.data.startsWith(faturaMonth))
-                  .reduce((acc, c) => acc + c.valor, 0)
+                viewingFaturaCartao
+                  ? getCardInvoiceTotal(compras, viewingFaturaCartao, faturaMonth)
+                  : 0
               )}
             </span>
           </div>

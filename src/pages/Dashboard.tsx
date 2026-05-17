@@ -26,6 +26,7 @@ import type { DashboardChartsData } from '../components/dashboard/ChartsPanel';
 import { dateInputTime, formatDateBR, formatDateInput, formatMonthInput } from '../lib/date';
 import { DatePicker } from '../components/ui/DatePicker';
 import { Select } from '../components/ui/Select';
+import { getCardInvoiceTotal, getCardPurchaseInstallments } from '../lib/cardInvoices';
 
 const ChartsPanel = lazy(() => import('../components/dashboard/ChartsPanel').then((m) => ({ default: m.ChartsPanel })));
 
@@ -181,10 +182,21 @@ const buildDailyChart = (vendas: Venda[], compras: Compra[], range: PeriodRange)
   });
 };
 
-const buildMonthlyChart = (vendas: Venda[], compras: Compra[], range: PeriodRange) => {
+const buildMonthlyChart = (vendas: Venda[], compras: Compra[], cartoes: Cartao[], range: PeriodRange) => {
+  const cardInstallments = cartoes.flatMap((cartao) => (
+    compras.flatMap((compra) => getCardPurchaseInstallments(compra, cartao))
+  ));
+  const isMonthInRange = (month: string) => {
+    const monthStart = `${month}-01`;
+    const monthEnd = endOfMonth(month);
+    return (!range.start || monthEnd >= range.start) && (!range.end || monthStart <= range.end);
+  };
   const months = Array.from(new Set([
     ...vendas.filter((v) => isInRange(v.data, range)).map((v) => v.data.slice(0, 7)),
-    ...compras.filter((c) => isInRange(c.data, range)).map((c) => c.data.slice(0, 7)),
+    ...compras.filter((c) => !c.cartaoId && isInRange(c.data, range)).map((c) => c.data.slice(0, 7)),
+    ...cardInstallments
+      .filter((installment) => isMonthInRange(installment.mes))
+      .map((installment) => installment.mes),
   ])).sort();
 
   const visibleMonths = months.length ? months.slice(-12) : [formatMonthInput()];
@@ -192,7 +204,8 @@ const buildMonthlyChart = (vendas: Venda[], compras: Compra[], range: PeriodRang
   return visibleMonths.map((month) => ({
     name: monthNames[parseMonth(month).getMonth()],
     Entradas: vendas.filter((v) => v.data.startsWith(month)).reduce((acc, v) => acc + v.valor, 0),
-    Saídas: compras.filter((c) => c.data.startsWith(month)).reduce((acc, c) => acc + c.valor, 0),
+    Saídas: compras.filter((c) => !c.cartaoId && c.data.startsWith(month)).reduce((acc, c) => acc + c.valor, 0)
+      + cardInstallments.filter((installment) => installment.mes === month).reduce((acc, installment) => acc + installment.valor, 0),
   }));
 };
 
@@ -315,10 +328,17 @@ export const Dashboard = () => {
 
   const dashboardData = useMemo(() => {
     const vendasPeriodo = data.vendas.filter((v) => isInRange(v.data, periodRange));
-    const comprasPeriodo = data.compras.filter((c) => isInRange(c.data, periodRange));
+    const comprasPeriodo = data.compras.filter((c) => !c.cartaoId && isInRange(c.data, periodRange));
+    const cardInstallmentsPeriodo = data.cartoes.flatMap((cartao) => (
+      data.compras.flatMap((compra) => getCardPurchaseInstallments(compra, cartao).map((installment) => ({
+        ...installment,
+        dueDate: buildDateForMonth(installment.mes, cartao.vencimento || 10),
+      })))
+    )).filter((installment) => isInRange(installment.dueDate, periodRange));
     const totalVendas = vendasPeriodo.reduce((acc, v) => acc + v.valor, 0);
     const totalCompras = comprasPeriodo.reduce((acc, c) => acc + c.valor, 0);
-    const faturasValor = comprasPeriodo.filter((c) => c.cartaoId).reduce((acc, c) => acc + c.valor, 0);
+    const faturasValor = cardInstallmentsPeriodo.reduce((acc, installment) => acc + installment.valor, 0);
+    const totalSaidas = totalCompras + faturasValor;
     const produtosAtivos = data.produtos.filter((p) => p.ativo);
     const baixoEstoque = produtosAtivos.filter((p) => p.estoque <= p.estoqueMinimo);
     const valorEstoque = produtosAtivos.reduce((acc, p) => acc + p.estoque * p.custo, 0);
@@ -326,8 +346,8 @@ export const Dashboard = () => {
     return {
       stats: {
         totalVendas,
-        totalCompras,
-        saldo: totalVendas - totalCompras,
+        totalCompras: totalSaidas,
+        saldo: totalVendas - totalSaidas,
         faturasValor,
         produtosAtivos: produtosAtivos.length,
         baixoEstoque: baixoEstoque.length,
@@ -335,10 +355,10 @@ export const Dashboard = () => {
       } satisfies DashboardStats,
       charts: {
         vendas7Dias: buildDailyChart(data.vendas, data.compras, periodRange),
-        fluxo3Meses: buildMonthlyChart(data.vendas, data.compras, periodRange),
+        fluxo3Meses: buildMonthlyChart(data.vendas, data.compras, data.cartoes, periodRange),
       } satisfies DashboardChartsData,
     };
-  }, [data.compras, data.produtos, data.vendas, periodRange]);
+  }, [data.cartoes, data.compras, data.produtos, data.vendas, periodRange]);
 
   const actionCenter = useMemo(() => {
     const today = formatDateInput();
@@ -363,9 +383,7 @@ export const Dashboard = () => {
     const cardActions: ActionItem[] = data.cartoes
       .map((cartao) => {
         const dueDate = buildDateForMonth(currentMonth, cartao.vencimento || 10);
-        const invoiceValue = data.compras
-          .filter((compra) => compra.cartaoId === cartao.id && compra.data.startsWith(currentMonth))
-          .reduce((acc, compra) => acc + compra.valor, 0);
+        const invoiceValue = getCardInvoiceTotal(data.compras, cartao, currentMonth);
         const isPaid = paidInvoices.has(`${cartao.id}:${currentMonth}`);
         if (invoiceValue <= 0 || isPaid || dueDate > nextLimit) return null;
 

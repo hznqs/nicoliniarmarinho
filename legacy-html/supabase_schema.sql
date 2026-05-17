@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS compras (
   "boletoCodigo" TEXT,
   "boletoPago" BOOLEAN NOT NULL DEFAULT FALSE,
   "boletoDataPagamento" DATE,
+  parcelas INT NOT NULL DEFAULT 1 CHECK (parcelas BETWEEN 1 AND 120),
   valor NUMERIC(15, 2) NOT NULL CHECK (valor >= 0),
   data DATE NOT NULL,
   descricao TEXT,
@@ -201,6 +202,7 @@ ALTER TABLE compras ADD COLUMN IF NOT EXISTS "boletoVencimento" DATE;
 ALTER TABLE compras ADD COLUMN IF NOT EXISTS "boletoCodigo" TEXT;
 ALTER TABLE compras ADD COLUMN IF NOT EXISTS "boletoPago" BOOLEAN DEFAULT FALSE;
 ALTER TABLE compras ADD COLUMN IF NOT EXISTS "boletoDataPagamento" DATE;
+ALTER TABLE compras ADD COLUMN IF NOT EXISTS parcelas INT NOT NULL DEFAULT 1;
 ALTER TABLE compras ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 ALTER TABLE compras ALTER COLUMN valor TYPE NUMERIC(15, 2) USING valor::NUMERIC(15, 2);
 
@@ -219,6 +221,9 @@ ALTER TABLE compras ALTER COLUMN "formaPagamento" SET DEFAULT 'avista';
 ALTER TABLE compras ALTER COLUMN "formaPagamento" SET NOT NULL;
 ALTER TABLE compras ALTER COLUMN "boletoPago" SET DEFAULT FALSE;
 ALTER TABLE compras ALTER COLUMN "boletoPago" SET NOT NULL;
+ALTER TABLE compras ALTER COLUMN parcelas SET DEFAULT 1;
+ALTER TABLE compras ALTER COLUMN parcelas SET NOT NULL;
+UPDATE compras SET parcelas = 1 WHERE parcelas IS NULL OR parcelas < 1;
 
 DO $$
 BEGIN
@@ -228,6 +233,17 @@ BEGIN
     ALTER TABLE compras
       ADD CONSTRAINT compras_forma_pagamento_check
       CHECK ("formaPagamento" IN ('avista', 'cartao', 'boleto'));
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'compras_parcelas_check'
+  ) THEN
+    ALTER TABLE compras
+      ADD CONSTRAINT compras_parcelas_check
+      CHECK (parcelas BETWEEN 1 AND 120);
   END IF;
 END $$;
 

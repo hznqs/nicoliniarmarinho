@@ -10,7 +10,8 @@ import {
   ReceiptText,
   CheckCircle2,
   RotateCcw,
-  AlertCircle
+  AlertCircle,
+  CreditCard
 } from 'lucide-react';
 import { DataService } from '../lib/services';
 import type { Compra, Fornecedor, Cartao } from '../lib/services';
@@ -47,6 +48,7 @@ export const Compras = () => {
     fornecedorId: '',
     formaPagamento: 'avista' as Compra['formaPagamento'],
     cartaoId: '',
+    parcelas: 1,
     boletoVencimento: '',
     boletoCodigo: '',
     boletoPago: false,
@@ -86,6 +88,7 @@ export const Compras = () => {
         fornecedorId: compra.fornecedorId,
         formaPagamento: compra.formaPagamento || (compra.cartaoId ? 'cartao' : 'avista'),
         cartaoId: compra.cartaoId || '',
+        parcelas: compra.parcelas || 1,
         boletoVencimento: compra.boletoVencimento || '',
         boletoCodigo: compra.boletoCodigo || '',
         boletoPago: Boolean(compra.boletoPago),
@@ -100,6 +103,7 @@ export const Compras = () => {
         fornecedorId: '',
         formaPagamento: 'avista',
         cartaoId: '',
+        parcelas: 1,
         boletoVencimento: '',
         boletoCodigo: '',
         boletoPago: false,
@@ -118,6 +122,10 @@ export const Compras = () => {
         setFormError('Selecione um cartão para compras no cartão.');
         return;
       }
+      if (formData.formaPagamento === 'cartao' && (!Number.isInteger(formData.parcelas) || formData.parcelas < 1 || formData.parcelas > 120)) {
+        setFormError('Informe uma quantidade de parcelas entre 1 e 120.');
+        return;
+      }
 
       if (formData.formaPagamento === 'boleto' && !formData.boletoVencimento) {
         setFormError('Informe o vencimento do boleto.');
@@ -127,6 +135,7 @@ export const Compras = () => {
       const payload: Omit<Compra, 'id' | 'fornecedores' | 'cartoes'> = {
         ...formData,
         cartaoId: formData.formaPagamento === 'cartao' ? formData.cartaoId : null,
+        parcelas: formData.formaPagamento === 'cartao' ? formData.parcelas : 1,
         boletoVencimento: formData.formaPagamento === 'boleto' ? formData.boletoVencimento : null,
         boletoCodigo: formData.formaPagamento === 'boleto' ? formData.boletoCodigo : '',
         boletoPago: formData.formaPagamento === 'boleto' ? formData.boletoPago : false,
@@ -200,8 +209,9 @@ export const Compras = () => {
   const getPaymentBadge = (compra: Compra) => {
     const forma = getFormaPagamento(compra);
     if (forma === 'cartao') {
+      const parcelas = compra.parcelas || 1;
       return {
-        label: compra.cartoes?.nome || 'Cartão',
+        label: `${compra.cartoes?.nome || 'Cartão'}${parcelas > 1 ? ` · ${parcelas}x` : ''}`,
         className: 'bg-purple-500/10 text-purple-400 border border-purple-500/20',
       };
     }
@@ -225,6 +235,7 @@ export const Compras = () => {
       Fornecedor: c.fornecedores?.nome || 'N/A',
       'Forma de pagamento': getPaymentBadge(c).label,
       Cartão: c.cartoes?.nome || '',
+      Parcelas: getFormaPagamento(c) === 'cartao' ? c.parcelas || 1 : '',
       'Vencimento boleto': formatDateBR(c.boletoVencimento),
       'Código boleto': c.boletoCodigo || '',
       'Status boleto': getFormaPagamento(c) === 'boleto' ? (c.boletoPago ? 'Pago' : 'Em aberto') : '',
@@ -507,6 +518,7 @@ export const Compras = () => {
                 ...formData,
                 formaPagamento: e.target.value as Compra['formaPagamento'],
                 cartaoId: e.target.value === 'cartao' ? formData.cartaoId : '',
+                parcelas: e.target.value === 'cartao' ? formData.parcelas : 1,
                 boletoVencimento: e.target.value === 'boleto' ? formData.boletoVencimento : '',
                 boletoCodigo: e.target.value === 'boleto' ? formData.boletoCodigo : '',
                 boletoPago: e.target.value === 'boleto' ? formData.boletoPago : false,
@@ -520,17 +532,38 @@ export const Compras = () => {
           </div>
 
           {formData.formaPagamento === 'cartao' && (
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-zinc-400">Cartão de Crédito</label>
-              <select 
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary/20 outline-none"
-                value={formData.cartaoId}
-                onChange={(e) => setFormData({ ...formData, cartaoId: e.target.value })}
-                required
-              >
-                <option value="">Selecione um cartão</option>
-                {cartoes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-              </select>
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-800/20 p-4 space-y-4">
+              <div className="flex items-center gap-2 text-sm font-bold text-white">
+                <CreditCard size={18} className="text-primary" />
+                Dados do cartão
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_120px] gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-zinc-400">Cartão de Crédito</label>
+                  <select
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary/20 outline-none"
+                    value={formData.cartaoId}
+                    onChange={(e) => setFormData({ ...formData, cartaoId: e.target.value })}
+                    required
+                  >
+                    <option value="">Selecione um cartão</option>
+                    {cartoes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                  </select>
+                </div>
+                <Input
+                  label="Parcelas"
+                  type="number"
+                  min="1"
+                  max="120"
+                  step="1"
+                  value={formData.parcelas}
+                  onChange={(e) => setFormData({ ...formData, parcelas: e.target.value ? Math.max(1, Math.min(120, parseInt(e.target.value, 10) || 1)) : 1 })}
+                  required
+                />
+              </div>
+              <p className="text-xs text-zinc-500">
+                Compras após o fechamento entram na próxima fatura. Parcelas são distribuídas mês a mês automaticamente.
+              </p>
             </div>
           )}
 

@@ -20,6 +20,7 @@ import type { Cartao, CartaoFaturaPagamento, Compra, LancamentoFinanceiro } from
 import { dateInputTime, formatDateBR, formatDateInput, formatMonthInput } from '../lib/date';
 import { getErrorMessage } from '../lib/error';
 import { useConfirm } from '../contexts/confirm';
+import { getCardInvoiceTotal } from '../lib/cardInvoices';
 
 type CalendarEventType = 'boleto' | 'cartao' | 'financeiro' | 'compra';
 type CalendarEventStatus = 'aberto' | 'vencido' | 'pago' | 'previsto';
@@ -167,14 +168,12 @@ const buildEvents = (
       return;
     }
 
-    if (compra.data.startsWith(month)) {
+    if (compra.formaPagamento === 'avista' && compra.data.startsWith(month)) {
       events.push({
         id: `compra-${compra.id}`,
         date: compra.data,
         title: compra.fornecedores?.nome || 'Compra registrada',
-        subtitle: compra.formaPagamento === 'cartao'
-          ? `Compra no cartão ${compra.cartoes?.nome || ''}`.trim()
-          : 'Compra à vista',
+        subtitle: 'Compra à vista',
         value: compra.valor,
         type: 'compra',
         status: 'pago',
@@ -184,9 +183,7 @@ const buildEvents = (
 
   cartoes.forEach((cartao) => {
     const dueDate = buildDateForMonth(month, cartao.vencimento || 10);
-    const fatura = compras
-      .filter((compra) => compra.cartaoId === cartao.id && compra.data.startsWith(month))
-      .reduce((acc, compra) => acc + compra.valor, 0);
+    const fatura = getCardInvoiceTotal(compras, cartao, month);
     const pagamento = faturaPagamentosByCard.get(`${cartao.id}:${month}`);
     const status: CalendarEventStatus = pagamento
       ? 'pago'

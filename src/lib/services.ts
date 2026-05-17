@@ -45,6 +45,7 @@ export interface Compra {
   fornecedorId: string;
   formaPagamento?: 'avista' | 'cartao' | 'boleto';
   cartaoId?: string | null;
+  parcelas?: number;
   boletoVencimento?: string | null;
   boletoCodigo?: string | null;
   boletoPago?: boolean;
@@ -131,6 +132,13 @@ const sanitizeVenda = (venda: Omit<Venda, 'id'> | Partial<Venda>) => {
 const sanitizeCompra = (compra: Partial<Compra>) => {
   const formaPagamento = compra.formaPagamento ?? (compra.cartaoId ? 'cartao' : 'avista');
   const normalizedForma = ['avista', 'cartao', 'boleto'].includes(formaPagamento) ? formaPagamento : 'avista';
+  const parcelas = normalizedForma === 'cartao'
+    ? assertInteger(Number(compra.parcelas || 1), 'Parcelas', 1)
+    : 1;
+
+  if (parcelas > 120) {
+    throw new Error('Parcelas deve ser no máximo 120.');
+  }
 
   return {
     ...compra,
@@ -140,6 +148,7 @@ const sanitizeCompra = (compra: Partial<Compra>) => {
     fornecedorId: compra.fornecedorId ? assertId(compra.fornecedorId, 'Fornecedor') : compra.fornecedorId,
     formaPagamento: normalizedForma,
     cartaoId: normalizedForma === 'cartao' && compra.cartaoId ? assertId(compra.cartaoId, 'Cartão') : null,
+    parcelas,
     boletoVencimento: normalizedForma === 'boleto' && compra.boletoVencimento
       ? assertDateInput(compra.boletoVencimento, 'Vencimento do boleto')
       : null,
