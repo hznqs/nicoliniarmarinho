@@ -35,7 +35,7 @@ export const Button: React.FC<ButtonProps> = ({
   return (
     <button 
       className={`
-        inline-flex min-h-11 items-center justify-center gap-2 rounded-xl font-semibold transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none
+        inline-flex min-h-11 max-w-full min-w-0 items-center justify-center gap-2 rounded-xl font-semibold leading-tight transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none
         ${variants[variant]} ${sizes[size]} ${fullWidth ? 'w-full' : ''} ${className}
       `}
       disabled={isLoading}
@@ -45,8 +45,8 @@ export const Button: React.FC<ButtonProps> = ({
         <div className="w-5 h-5 border-2 border-current/20 border-t-current rounded-full animate-spin" />
       ) : (
         <>
-          {leftIcon}
-          {children}
+          {leftIcon && <span className="shrink-0">{leftIcon}</span>}
+          <span className="min-w-0 max-w-full whitespace-normal text-center">{children}</span>
         </>
       )}
     </button>

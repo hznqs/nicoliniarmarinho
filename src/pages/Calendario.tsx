@@ -441,9 +441,9 @@ export const Calendario = () => {
       </section>
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-6">
-        <section className="bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden min-w-0">
+        <section className="calendar-panel bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden min-w-0">
           <div className="p-5 border-b border-zinc-800 bg-zinc-800/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+            <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2 sm:flex sm:gap-3 min-w-0 w-full sm:w-auto">
               <button
                 type="button"
                 title="Mês anterior"
@@ -452,7 +452,7 @@ export const Calendario = () => {
               >
                 <ChevronLeft size={18} />
               </button>
-              <h2 className="text-xl font-bold text-white font-outfit capitalize min-w-0">
+              <h2 className="text-center sm:text-left text-xl font-bold text-white font-outfit capitalize min-w-0">
                 {monthTitle(viewMonth)}
               </h2>
               <button
@@ -482,75 +482,77 @@ export const Calendario = () => {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-7">
-            {monthDays.map((day) => {
-              const dayEvents = eventsByDay.get(day) || [];
-              const pendingEvents = dayEvents.filter(isPendingEvent);
-              const overdueEvents = pendingEvents.filter((event) => event.status === 'vencido');
-              const isCurrentMonth = day.startsWith(viewMonth);
-              const isSelected = day === selectedDate;
-              const isToday = day === today;
-              const [, , dayNumber] = day.split('-').map(Number);
+          <div className="calendar-grid-scroll">
+            <div className="grid grid-cols-1 sm:grid-cols-7">
+              {monthDays.map((day) => {
+                const dayEvents = eventsByDay.get(day) || [];
+                const pendingEvents = dayEvents.filter(isPendingEvent);
+                const overdueEvents = pendingEvents.filter((event) => event.status === 'vencido');
+                const isCurrentMonth = day.startsWith(viewMonth);
+                const isSelected = day === selectedDate;
+                const isToday = day === today;
+                const [, , dayNumber] = day.split('-').map(Number);
 
-              return (
-                <button
-                  key={day}
-                  type="button"
-                  onClick={() => setSelectedDate(day)}
-                  className={`
-                    min-h-[7.5rem] border-b border-zinc-800 p-3 text-left transition-colors sm:border-r
-                    hover:bg-white/5
-                    ${isSelected ? 'bg-primary/10 ring-1 ring-inset ring-primary/50' : ''}
-                    ${!isSelected && overdueEvents.length ? 'bg-rose-500/5' : ''}
-                    ${!isSelected && !overdueEvents.length && pendingEvents.length ? 'bg-amber-500/5' : ''}
-                    ${!isCurrentMonth ? 'bg-black/10 opacity-55' : ''}
-                  `}
-                >
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className={`flex h-7 w-7 items-center justify-center rounded-lg text-sm font-bold ${
-                      isToday ? 'bg-primary text-black' : 'text-white'
-                    }`}>
-                      {dayNumber}
-                    </span>
-                    {dayEvents.length > 0 && (
-                      <span className={`text-[11px] font-bold ${
-                        overdueEvents.length ? 'text-rose-400' : pendingEvents.length ? 'text-amber-400' : 'text-zinc-500'
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => setSelectedDate(day)}
+                    className={`
+                      calendar-day-cell min-h-[7.5rem] border-b border-zinc-800 p-3 text-left transition-colors sm:border-r
+                      hover:bg-white/5
+                      ${isSelected ? 'bg-primary/10 ring-1 ring-inset ring-primary/50' : ''}
+                      ${!isSelected && overdueEvents.length ? 'bg-rose-500/5' : ''}
+                      ${!isSelected && !overdueEvents.length && pendingEvents.length ? 'bg-amber-500/5' : ''}
+                      ${!isCurrentMonth ? 'bg-black/10 opacity-55' : ''}
+                    `}
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className={`flex h-7 w-7 items-center justify-center rounded-lg text-sm font-bold ${
+                        isToday ? 'bg-primary text-black' : 'text-white'
                       }`}>
-                        {pendingEvents.length
-                          ? `${pendingEvents.length} pend.`
-                          : `${dayEvents.length} item${dayEvents.length > 1 ? 's' : ''}`}
+                        {dayNumber}
                       </span>
-                    )}
-                  </div>
-
-                  {pendingEvents.length > 0 && (
-                    <div className={`mb-2 rounded-lg border px-2 py-1 ${
-                      overdueEvents.length
-                        ? 'border-rose-500/25 bg-rose-500/10 text-rose-300'
-                        : 'border-amber-500/25 bg-amber-500/10 text-amber-300'
-                    }`}>
-                      <span className="block text-center text-[10px] font-bold uppercase">
-                        {overdueEvents.length ? 'Vencido' : 'Pendente'}
-                      </span>
+                      {dayEvents.length > 0 && (
+                        <span className={`text-[11px] font-bold ${
+                          overdueEvents.length ? 'text-rose-400' : pendingEvents.length ? 'text-amber-400' : 'text-zinc-500'
+                        }`}>
+                          {pendingEvents.length
+                            ? `${pendingEvents.length} pend.`
+                            : `${dayEvents.length} item${dayEvents.length > 1 ? 's' : ''}`}
+                        </span>
+                      )}
                     </div>
-                  )}
 
-                  <div className="space-y-1.5">
-                    {dayEvents.slice(0, pendingEvents.length ? 2 : 3).map((event) => (
-                      <div key={event.id} className="flex items-center gap-1.5 min-w-0">
-                        <span className={`h-2 w-2 rounded-full shrink-0 ${getEventDot(event)}`} />
-                        <span className={`truncate text-[11px] ${event.status === 'pago' ? 'text-emerald-300' : 'text-zinc-300'}`}>
-                          {event.title}
+                    {pendingEvents.length > 0 && (
+                      <div className={`mb-2 rounded-lg border px-2 py-1 ${
+                        overdueEvents.length
+                          ? 'border-rose-500/25 bg-rose-500/10 text-rose-300'
+                          : 'border-amber-500/25 bg-amber-500/10 text-amber-300'
+                      }`}>
+                        <span className="block text-center text-[10px] font-bold uppercase">
+                          {overdueEvents.length ? 'Vencido' : 'Pendente'}
                         </span>
                       </div>
-                    ))}
-                    {dayEvents.length > 3 && (
-                      <span className="text-[11px] font-semibold text-primary">+{dayEvents.length - 3} outros</span>
                     )}
-                  </div>
-                </button>
-              );
-            })}
+
+                    <div className="space-y-1.5">
+                      {dayEvents.slice(0, pendingEvents.length ? 2 : 3).map((event) => (
+                        <div key={event.id} className="flex items-center gap-1.5 min-w-0">
+                          <span className={`h-2 w-2 rounded-full shrink-0 ${getEventDot(event)}`} />
+                          <span className={`truncate text-[11px] ${event.status === 'pago' ? 'text-emerald-300' : 'text-zinc-300'}`}>
+                            {event.title}
+                          </span>
+                        </div>
+                      ))}
+                      {dayEvents.length > 3 && (
+                        <span className="text-[11px] font-semibold text-primary">+{dayEvents.length - 3} outros</span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </section>
 

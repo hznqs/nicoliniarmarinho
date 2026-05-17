@@ -139,6 +139,27 @@
     min-width: 0;
   }
 
+  .app-shell *,
+  .modal-shell * {
+    min-width: 0;
+  }
+
+  .app-shell section,
+  .app-shell article,
+  .app-shell aside,
+  .app-shell header,
+  .app-shell form,
+  .app-shell fieldset,
+  .app-shell .grid,
+  .app-shell .flex {
+    max-width: 100%;
+  }
+
+  .app-shell [class*="grid-cols-"] > *,
+  .app-shell [class*="flex"] > * {
+    min-width: 0;
+  }
+
   .app-shell .p-6 {
     padding: var(--app-card-padding) !important;
   }
@@ -180,6 +201,7 @@
 
   .responsive-table table {
     min-width: 720px;
+    table-layout: auto;
   }
 
   .dashboard-stat-grid,
@@ -221,6 +243,25 @@
     padding: 0.625rem;
   }
 
+  .calendar-panel {
+    display: flex;
+    min-height: 0;
+    max-height: min(760px, calc(100dvh - 9rem));
+    flex-direction: column;
+  }
+
+  .calendar-grid-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chart-card {
+    min-width: 0;
+  }
+
   .dashboard-stat-grid > *,
   .summary-card-grid > * {
     min-width: 0;
@@ -231,7 +272,11 @@
   .app-shell strong,
   .app-shell p,
   .app-shell span,
-  .app-shell button {
+  .app-shell button,
+  .modal-shell p,
+  .modal-shell span,
+  .modal-shell button,
+  .modal-shell label {
     overflow-wrap: anywhere;
   }
 
@@ -263,6 +308,22 @@
     min-width: 0;
   }
 
+  .modal-shell {
+    max-width: min(100%, 42rem);
+  }
+
+  .modal-shell.max-w-4xl {
+    max-width: min(100%, 56rem);
+  }
+
+  .modal-header h3 {
+    overflow-wrap: anywhere;
+  }
+
+  .modal-body {
+    min-height: 0;
+  }
+
   /* Nested surface (section headers inside cards, secondary panels) */
   .bg-zinc-800\/20,
   [class*="bg-zinc-800/20"] {
@@ -279,6 +340,7 @@
     padding-top:      var(--app-control-y);
     padding-bottom:   var(--app-control-y);
     min-height:       44px;
+    max-width:        100%;
   }
 
   input::placeholder,
@@ -320,6 +382,7 @@
   select {
     outline: none;
     touch-action: manipulation;
+    max-width: 100%;
   }
 
   button:focus-visible,
@@ -363,7 +426,8 @@
   }
 
   .app-shell main header > div:last-child > button,
-  .app-shell main header > div:last-child > .inline-flex {
+  .app-shell main header > div:last-child > .inline-flex,
+  .app-shell main header > div:last-child > a {
     flex: 1 1 150px;
   }
 
@@ -415,6 +479,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: 1rem;
     padding: 0.75rem 1rem !important;
     border-bottom: 1px solid var(--app-border);
@@ -441,6 +506,7 @@
   .responsive-table tbody td > *:not(button) {
     flex: 1 1 auto;
     min-width: 0;
+    max-width: 100%;
   }
 
   .responsive-table tbody td:not([data-label]) {
@@ -466,6 +532,10 @@
     padding: 0.75rem 1rem !important;
     text-align: left !important;
   }
+
+  .responsive-table tfoot td[colspan] {
+    width: 100% !important;
+  }
 }
 
 @media (max-width: 640px) {
@@ -481,6 +551,23 @@
 
   .app-shell .p-6,
   .app-shell .p-8 {
+    padding: 1rem !important;
+  }
+
+  .modal-viewport {
+    padding: 0.5rem !important;
+  }
+
+  .modal-shell {
+    width: 100% !important;
+    max-width: calc(100vw - 1rem) !important;
+    max-height: calc(100dvh - 1rem) !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+  }
+
+  .modal-header,
+  .modal-body {
     padding: 1rem !important;
   }
 
@@ -520,6 +607,17 @@
     flex-direction: column !important;
   }
 
+  .app-shell main header > div:last-child {
+    display: grid !important;
+    grid-template-columns: 1fr;
+  }
+
+  .app-shell main header > div:last-child > *,
+  .app-shell main header > div:last-child button,
+  .app-shell main header > div:last-child a {
+    width: 100%;
+  }
+
   .app-shell form .justify-end {
     flex-wrap: wrap;
   }
@@ -536,8 +634,83 @@
     width: 100%;
   }
 
+  .calendar-panel {
+    max-height: min(70dvh, 620px);
+  }
+
+  .calendar-grid-scroll {
+    max-height: min(58dvh, 520px);
+  }
+
   .date-picker-popover {
     border-radius: 18px !important;
+  }
+
+  .chart-card {
+    height: 320px !important;
+  }
+
+  .calendar-day-cell {
+    min-height: 5.75rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-shell main {
+    padding: 0.75rem !important;
+  }
+
+  .app-shell .space-y-8 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1rem !important;
+  }
+
+  .app-shell .rounded-2xl,
+  .app-shell .rounded-3xl {
+    border-radius: 16px !important;
+  }
+
+  .app-shell .text-xl {
+    font-size: 1.1rem !important;
+    line-height: 1.45 !important;
+  }
+
+  .app-shell .text-lg {
+    font-size: 1rem !important;
+    line-height: 1.45 !important;
+  }
+
+  .responsive-table tbody {
+    padding: 0.5rem;
+  }
+
+  .responsive-table tbody td {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.45rem;
+    text-align: left !important;
+  }
+
+  .responsive-table tbody td::before {
+    max-width: 100%;
+    font-size: 0.68rem;
+  }
+
+  .responsive-table tbody td[data-label="Ações"] > div {
+    justify-content: flex-start;
+  }
+
+  .summary-card-grid,
+  .dashboard-stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-card {
+    height: 290px !important;
+  }
+
+  .calendar-day-cell {
+    min-height: 5rem !important;
+    padding: 0.75rem !important;
   }
 }
 

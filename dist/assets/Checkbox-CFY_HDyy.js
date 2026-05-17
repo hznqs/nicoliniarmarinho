@@ -1,4 +1,4 @@
-import{r as e}from"./rolldown-runtime-S-ySWqyJ.js";import{rt as t}from"./vendor-Y6SgQ0Y8.js";import{i as n}from"./vendor-react-2SHIJeLP.js";import{G as r}from"./vendor-lucide-CfIKqoEg.js";var i=e(t(),1),a=n(),o=({label:e,description:t,checked:n,onCheckedChange:o,align:s=`start`,className:c=``,id:l,disabled:u,...d})=>{let f=(0,i.useId)(),p=l||f;return(0,a.jsxs)(`label`,{htmlFor:p,className:`
+import{r as e}from"./rolldown-runtime-S-ySWqyJ.js";import{rt as t}from"./vendor-Y6SgQ0Y8.js";import{i as n}from"./vendor-react-DmgLT1Dw.js";import{X as r}from"./vendor-lucide-BEZgCeEV.js";var i=e(t(),1),a=n(),o=({label:e,description:t,checked:n,onCheckedChange:o,align:s=`start`,className:c=``,id:l,disabled:u,...d})=>{let f=(0,i.useId)(),p=l||f;return(0,a.jsxs)(`label`,{htmlFor:p,className:`
         group relative flex cursor-pointer gap-3 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 transition-all
         hover:border-primary/50 hover:bg-zinc-900/80
         ${s===`between`?`items-center justify-between`:`items-start`}
