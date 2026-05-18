@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { 
   Plus, 
   FileSpreadsheet, 
@@ -24,6 +24,7 @@ import { Select } from '../components/ui/Select';
 import { exportRowsToCsv } from '../lib/export';
 import { formatDateBR, formatDateInput } from '../lib/date';
 import { useConfirm } from '../contexts/confirm';
+import { buildDateForMonthDay, getCardInvoiceMonth } from '../lib/cardInvoices';
 
 export const Compras = () => {
   const confirm = useConfirm();
@@ -43,12 +44,12 @@ export const Compras = () => {
 
   // Form State
   const [formData, setFormData] = useState({
-    valor: 0,
+    valor: '',
     data: formatDateInput(),
     fornecedorId: '',
     formaPagamento: 'avista' as Compra['formaPagamento'],
     cartaoId: '',
-    parcelas: 1,
+    parcelas: '',
     boletoVencimento: '',
     boletoCodigo: '',
     boletoPago: false,
@@ -83,12 +84,12 @@ export const Compras = () => {
     if (compra) {
       setSelectedCompra(compra);
       setFormData({
-        valor: compra.valor,
+        valor: String(compra.valor),
         data: compra.data,
         fornecedorId: compra.fornecedorId,
         formaPagamento: compra.formaPagamento || (compra.cartaoId ? 'cartao' : 'avista'),
         cartaoId: compra.cartaoId || '',
-        parcelas: compra.parcelas || 1,
+        parcelas: String(compra.parcelas || 1),
         boletoVencimento: compra.boletoVencimento || '',
         boletoCodigo: compra.boletoCodigo || '',
         boletoPago: Boolean(compra.boletoPago),
@@ -98,12 +99,12 @@ export const Compras = () => {
     } else {
       setSelectedCompra(null);
       setFormData({
-        valor: 0,
+        valor: '',
         data: formatDateInput(),
         fornecedorId: '',
         formaPagamento: 'avista',
         cartaoId: '',
-        parcelas: 1,
+        parcelas: '',
         boletoVencimento: '',
         boletoCodigo: '',
         boletoPago: false,
@@ -122,7 +123,8 @@ export const Compras = () => {
         setFormError('Selecione um cartão para compras no cartão.');
         return;
       }
-      if (formData.formaPagamento === 'cartao' && (!Number.isInteger(formData.parcelas) || formData.parcelas < 1 || formData.parcelas > 120)) {
+      const parcelas = Number(formData.parcelas);
+      if (formData.formaPagamento === 'cartao' && (!Number.isInteger(parcelas) || parcelas < 1 || parcelas > 120)) {
         setFormError('Informe uma quantidade de parcelas entre 1 e 120.');
         return;
       }
@@ -134,8 +136,9 @@ export const Compras = () => {
 
       const payload: Omit<Compra, 'id' | 'fornecedores' | 'cartoes'> = {
         ...formData,
+        valor: Number(formData.valor),
         cartaoId: formData.formaPagamento === 'cartao' ? formData.cartaoId : null,
-        parcelas: formData.formaPagamento === 'cartao' ? formData.parcelas : 1,
+        parcelas: formData.formaPagamento === 'cartao' ? parcelas : 1,
         boletoVencimento: formData.formaPagamento === 'boleto' ? formData.boletoVencimento : null,
         boletoCodigo: formData.formaPagamento === 'boleto' ? formData.boletoCodigo : '',
         boletoPago: formData.formaPagamento === 'boleto' ? formData.boletoPago : false,
@@ -196,6 +199,21 @@ export const Compras = () => {
   };
 
   const getFormaPagamento = (compra: Compra) => compra.formaPagamento || (compra.cartaoId ? 'cartao' : 'avista');
+  const cartoesById = useMemo(() => new Map(cartoes.map((cartao) => [cartao.id, cartao])), [cartoes]);
+
+  const getCompraCompetencia = (compra: Compra) => {
+    if (!compra.cartaoId) return compra.data;
+    const cartao = cartoesById.get(compra.cartaoId);
+    if (!cartao) return compra.data;
+    const invoiceMonth = getCardInvoiceMonth(compra.data, cartao.fechamento || 1);
+    return buildDateForMonthDay(invoiceMonth, cartao.vencimento || 10);
+  };
+
+  const formatMonthLabel = (month: string) => {
+    const [ano, mes] = month.split('-');
+    const date = new Date(parseInt(ano), parseInt(mes) - 1);
+    return date.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^./, str => str.toUpperCase());
+  };
 
   const today = formatDateInput();
 
@@ -236,6 +254,7 @@ export const Compras = () => {
       'Forma de pagamento': getPaymentBadge(c).label,
       Cartão: c.cartoes?.nome || '',
       Parcelas: getFormaPagamento(c) === 'cartao' ? c.parcelas || 1 : '',
+      'Competência/Fatura': getFormaPagamento(c) === 'cartao' ? formatMonthLabel(getCompraCompetencia(c).slice(0, 7)) : '',
       'Vencimento boleto': formatDateBR(c.boletoVencimento),
       'Código boleto': c.boletoCodigo || '',
       'Status boleto': getFormaPagamento(c) === 'boleto' ? (c.boletoPago ? 'Pago' : 'Em aberto') : '',
@@ -248,7 +267,7 @@ export const Compras = () => {
   };
 
   const filteredCompras = compras.filter(c => {
-    const matchMonth = filterMonth ? c.data.startsWith(filterMonth) : true;
+    const matchMonth = filterMonth ? getCompraCompetencia(c).startsWith(filterMonth) : true;
     const matchForn = filterFornecedor ? c.fornecedorId === filterFornecedor : true;
     const forma = getFormaPagamento(c);
     const matchPagamento = filterPagamento.startsWith('cartao:')
@@ -262,7 +281,7 @@ export const Compras = () => {
 
   const totalFiltrado = filteredCompras.reduce((acc, c) => acc + c.valor, 0);
 
-  const months = Array.from(new Set(compras.map(c => c.data.slice(0, 7)))).sort().reverse();
+  const months = Array.from(new Set(compras.map(c => getCompraCompetencia(c).slice(0, 7)))).sort().reverse();
 
   return (
     <div className="space-y-8">
@@ -294,11 +313,9 @@ export const Compras = () => {
                 onChange={setFilterMonth}
                 placeholder="Todos os meses"
                 options={months.map(m => {
-                  const [ano, mes] = m.split('-');
-                  const date = new Date(parseInt(ano), parseInt(mes) - 1);
                   return {
                     value: m,
-                    label: date.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^./, str => str.toUpperCase())
+                    label: formatMonthLabel(m)
                   };
                 })}
               />
@@ -407,6 +424,11 @@ export const Compras = () => {
                             Vence em {formatDateBR(compra.boletoVencimento)}
                           </span>
                         )}
+                        {getFormaPagamento(compra) === 'cartao' && (
+                          <span className="text-xs text-zinc-500">
+                            Fatura {formatMonthLabel(getCompraCompetencia(compra).slice(0, 7))} · vence {formatDateBR(getCompraCompetencia(compra))}
+                          </span>
+                        )}
                         {getFormaPagamento(compra) === 'boleto' && compra.boletoDataPagamento && (
                           <span className="text-xs text-emerald-400">
                             Pago em {formatDateBR(compra.boletoDataPagamento)}
@@ -485,7 +507,7 @@ export const Compras = () => {
               type="number"
               step="0.01"
               value={formData.valor}
-              onChange={(e) => setFormData({ ...formData, valor: e.target.value ? parseFloat(e.target.value) : 0 })}
+              onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
               required
             />
             <DatePicker 
@@ -518,7 +540,7 @@ export const Compras = () => {
                 ...formData,
                 formaPagamento: e.target.value as Compra['formaPagamento'],
                 cartaoId: e.target.value === 'cartao' ? formData.cartaoId : '',
-                parcelas: e.target.value === 'cartao' ? formData.parcelas : 1,
+                parcelas: e.target.value === 'cartao' ? formData.parcelas : '',
                 boletoVencimento: e.target.value === 'boleto' ? formData.boletoVencimento : '',
                 boletoCodigo: e.target.value === 'boleto' ? formData.boletoCodigo : '',
                 boletoPago: e.target.value === 'boleto' ? formData.boletoPago : false,
@@ -557,7 +579,7 @@ export const Compras = () => {
                   max="120"
                   step="1"
                   value={formData.parcelas}
-                  onChange={(e) => setFormData({ ...formData, parcelas: e.target.value ? Math.max(1, Math.min(120, parseInt(e.target.value, 10) || 1)) : 1 })}
+                  onChange={(e) => setFormData({ ...formData, parcelas: e.target.value })}
                   required
                 />
               </div>

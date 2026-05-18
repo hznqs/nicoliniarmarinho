@@ -49,7 +49,7 @@ export const Financeiro = () => {
     tipo: 'custo_fixo' as TipoLancamentoFinanceiro,
     descricao: '',
     categoria: '',
-    valor: 0,
+    valor: '',
     data: formatDateInput(),
     recorrente: false,
     observacao: '',
@@ -112,7 +112,7 @@ export const Financeiro = () => {
         tipo: lancamento.tipo,
         descricao: lancamento.descricao,
         categoria: lancamento.categoria || '',
-        valor: lancamento.valor,
+        valor: String(lancamento.valor),
         data: lancamento.data,
         recorrente: Boolean(lancamento.recorrente),
         observacao: lancamento.observacao || '',
@@ -123,7 +123,7 @@ export const Financeiro = () => {
         tipo: 'custo_fixo',
         descricao: '',
         categoria: '',
-        valor: 0,
+        valor: '',
         data: formatDateInput(),
         recorrente: false,
         observacao: '',
@@ -137,6 +137,7 @@ export const Financeiro = () => {
     try {
       const payload = {
         ...formData,
+        valor: Number(formData.valor),
         categoria: formData.categoria.trim(),
         observacao: formData.observacao.trim(),
       };
@@ -395,7 +396,7 @@ export const Financeiro = () => {
               step="0.01"
               min="0"
               value={formData.valor}
-              onChange={(e) => setFormData({ ...formData, valor: e.target.value ? parseFloat(e.target.value) : 0 })}
+              onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
               required
             />
           </div>

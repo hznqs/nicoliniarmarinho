@@ -26,7 +26,7 @@ import type { DashboardChartsData } from '../components/dashboard/ChartsPanel';
 import { dateInputTime, formatDateBR, formatDateInput, formatMonthInput } from '../lib/date';
 import { DatePicker } from '../components/ui/DatePicker';
 import { Select } from '../components/ui/Select';
-import { getCardInvoiceTotal, getCardPurchaseInstallments } from '../lib/cardInvoices';
+import { buildDateForMonthDay, getCardInvoiceTotal, getCardPurchaseInstallments } from '../lib/cardInvoices';
 
 const ChartsPanel = lazy(() => import('../components/dashboard/ChartsPanel').then((m) => ({ default: m.ChartsPanel })));
 
@@ -156,11 +156,21 @@ const isInRange = (date: string, range: PeriodRange) => {
   return (!range.start || date >= range.start) && (!range.end || date <= range.end);
 };
 
-const buildDailyChart = (vendas: Venda[], compras: Compra[], range: PeriodRange) => {
+const buildDailyChart = (vendas: Venda[], compras: Compra[], cartoes: Cartao[], range: PeriodRange) => {
+  const cardInstallments = cartoes.flatMap((cartao) => (
+    compras.flatMap((compra) => getCardPurchaseInstallments(compra, cartao).map((installment) => ({
+      ...installment,
+      dueDate: buildDateForMonthDay(installment.mes, cartao.vencimento || 10),
+    })))
+  ));
   const today = formatDateInput();
   const end = range.end || today;
   const start = range.start || (() => {
-    const firstDate = [...vendas.map((v) => v.data), ...compras.map((c) => c.data)].sort()[0];
+    const firstDate = [
+      ...vendas.map((v) => v.data),
+      ...compras.filter((c) => !c.cartaoId).map((c) => c.data),
+      ...cardInstallments.map((installment) => installment.dueDate),
+    ].sort()[0];
     return firstDate || today;
   })();
   const totalDays = Math.max(1, Math.floor((dateInputTime(end) - dateInputTime(start)) / 86_400_000) + 1);
@@ -177,7 +187,8 @@ const buildDailyChart = (vendas: Venda[], compras: Compra[], range: PeriodRange)
     return {
       name: displayStr,
       Vendas: vendas.filter((v) => v.data === dateStr).reduce((acc, v) => acc + v.valor, 0),
-      Compras: compras.filter((c) => c.data === dateStr).reduce((acc, c) => acc + c.valor, 0),
+      Compras: compras.filter((c) => !c.cartaoId && c.data === dateStr).reduce((acc, c) => acc + c.valor, 0)
+        + cardInstallments.filter((installment) => installment.dueDate === dateStr).reduce((acc, installment) => acc + installment.valor, 0),
     };
   });
 };
@@ -354,7 +365,7 @@ export const Dashboard = () => {
         valorEstoque,
       } satisfies DashboardStats,
       charts: {
-        vendas7Dias: buildDailyChart(data.vendas, data.compras, periodRange),
+        vendas7Dias: buildDailyChart(data.vendas, data.compras, data.cartoes, periodRange),
         fluxo3Meses: buildMonthlyChart(data.vendas, data.compras, data.cartoes, periodRange),
       } satisfies DashboardChartsData,
     };

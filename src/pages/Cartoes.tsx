@@ -41,9 +41,9 @@ export const Cartoes = () => {
   const [formData, setFormData] = useState({
     nome: '',
     digitos: '',
-    limite: 0,
-    fechamento: 1,
-    vencimento: 10,
+    limite: '',
+    fechamento: '',
+    vencimento: '',
   });
 
   const fetchData = async () => {
@@ -72,13 +72,13 @@ export const Cartoes = () => {
       setFormData({
         nome: cartao.nome,
         digitos: cartao.digitos || '',
-        limite: cartao.limite || 0,
-        fechamento: cartao.fechamento || 1,
-        vencimento: cartao.vencimento || 10,
+        limite: String(cartao.limite || ''),
+        fechamento: String(cartao.fechamento || ''),
+        vencimento: String(cartao.vencimento || ''),
       });
     } else {
       setEditingCartao(null);
-      setFormData({ nome: '', digitos: '', limite: 0, fechamento: 1, vencimento: 10 });
+      setFormData({ nome: '', digitos: '', limite: '', fechamento: '', vencimento: '' });
     }
     setIsModalOpen(true);
   };
@@ -92,9 +92,19 @@ export const Cartoes = () => {
     e.preventDefault();
     try {
       if (editingCartao) {
-        await DataService.updateCartao(editingCartao.id, formData);
+        await DataService.updateCartao(editingCartao.id, {
+          ...formData,
+          limite: Number(formData.limite || 0),
+          fechamento: Number(formData.fechamento),
+          vencimento: Number(formData.vencimento),
+        });
       } else {
-        await DataService.createCartao(formData);
+        await DataService.createCartao({
+          ...formData,
+          limite: Number(formData.limite || 0),
+          fechamento: Number(formData.fechamento),
+          vencimento: Number(formData.vencimento),
+        });
       }
       setIsModalOpen(false);
       fetchData();
@@ -308,7 +318,7 @@ export const Cartoes = () => {
               min="0"
               step="0.01"
               value={formData.limite}
-              onChange={(e) => setFormData({ ...formData, limite: e.target.value ? parseFloat(e.target.value) : 0 })}
+              onChange={(e) => setFormData({ ...formData, limite: e.target.value })}
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -318,7 +328,8 @@ export const Cartoes = () => {
               min="1"
               max="31"
               value={formData.fechamento}
-              onChange={(e) => setFormData({ ...formData, fechamento: e.target.value ? parseInt(e.target.value, 10) : 1 })}
+              onChange={(e) => setFormData({ ...formData, fechamento: e.target.value })}
+              required
             />
             <Input
               label="Dia de Vencimento"
@@ -326,7 +337,8 @@ export const Cartoes = () => {
               min="1"
               max="31"
               value={formData.vencimento}
-              onChange={(e) => setFormData({ ...formData, vencimento: e.target.value ? parseInt(e.target.value, 10) : 1 })}
+              onChange={(e) => setFormData({ ...formData, vencimento: e.target.value })}
+              required
             />
           </div>
           <div className="flex justify-end gap-3 pt-4">

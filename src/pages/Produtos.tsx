@@ -27,10 +27,10 @@ const initialForm = {
   nome: '',
   sku: '',
   categoria: '',
-  estoque: 0,
-  estoqueMinimo: 3,
-  custo: 0,
-  precoVenda: 0,
+  estoque: '',
+  estoqueMinimo: '',
+  custo: '',
+  precoVenda: '',
   ativo: true,
 };
 
@@ -112,10 +112,10 @@ export const Produtos = () => {
         nome: produto.nome,
         sku: produto.sku || '',
         categoria: produto.categoria || '',
-        estoque: produto.estoque,
-        estoqueMinimo: produto.estoqueMinimo,
-        custo: produto.custo,
-        precoVenda: produto.precoVenda,
+        estoque: String(produto.estoque),
+        estoqueMinimo: String(produto.estoqueMinimo),
+        custo: String(produto.custo),
+        precoVenda: String(produto.precoVenda),
         ativo: produto.ativo,
       });
     } else {
@@ -130,10 +130,17 @@ export const Produtos = () => {
     setSaving(true);
     setError(null);
     try {
+      const payload = {
+        ...formData,
+        estoque: Number(formData.estoque),
+        estoqueMinimo: Number(formData.estoqueMinimo),
+        custo: Number(formData.custo),
+        precoVenda: Number(formData.precoVenda),
+      };
       if (editingProduto) {
-        await DataService.updateProduto(editingProduto.id, formData);
+        await DataService.updateProduto(editingProduto.id, payload);
       } else {
-        await DataService.createProduto(formData);
+        await DataService.createProduto(payload);
       }
       setIsModalOpen(false);
       fetchProdutos();
@@ -393,7 +400,7 @@ export const Produtos = () => {
               type="number"
               min="0"
               value={formData.estoque}
-              onChange={(e) => setFormData({ ...formData, estoque: e.target.value ? parseInt(e.target.value, 10) : 0 })}
+              onChange={(e) => setFormData({ ...formData, estoque: e.target.value })}
               required
             />
             <Input
@@ -401,7 +408,7 @@ export const Produtos = () => {
               type="number"
               min="0"
               value={formData.estoqueMinimo}
-              onChange={(e) => setFormData({ ...formData, estoqueMinimo: e.target.value ? parseInt(e.target.value, 10) : 0 })}
+              onChange={(e) => setFormData({ ...formData, estoqueMinimo: e.target.value })}
               required
             />
           </div>
@@ -412,7 +419,7 @@ export const Produtos = () => {
               min="0"
               step="0.01"
               value={formData.custo}
-              onChange={(e) => setFormData({ ...formData, custo: e.target.value ? parseFloat(e.target.value) : 0 })}
+              onChange={(e) => setFormData({ ...formData, custo: e.target.value })}
               required
             />
             <Input
@@ -421,7 +428,7 @@ export const Produtos = () => {
               min="0"
               step="0.01"
               value={formData.precoVenda}
-              onChange={(e) => setFormData({ ...formData, precoVenda: e.target.value ? parseFloat(e.target.value) : 0 })}
+              onChange={(e) => setFormData({ ...formData, precoVenda: e.target.value })}
               required
             />
           </div>
