@@ -24,7 +24,7 @@ import { Select } from '../components/ui/Select';
 import { exportRowsToCsv } from '../lib/export';
 import { formatDateBR, formatDateInput } from '../lib/date';
 import { useConfirm } from '../contexts/confirm';
-import { buildDateForMonthDay, getCardInvoiceMonth } from '../lib/cardInvoices';
+import { getCardInvoiceDueDate } from '../lib/cardInvoices';
 
 export const Compras = () => {
   const confirm = useConfirm();
@@ -205,8 +205,7 @@ export const Compras = () => {
     if (!compra.cartaoId) return compra.data;
     const cartao = cartoesById.get(compra.cartaoId);
     if (!cartao) return compra.data;
-    const invoiceMonth = getCardInvoiceMonth(compra.data, cartao.fechamento || 1);
-    return buildDateForMonthDay(invoiceMonth, cartao.vencimento || 10);
+    return getCardInvoiceDueDate(compra.data, cartao.fechamento || 1, cartao.vencimento || 10);
   };
 
   const formatMonthLabel = (month: string) => {

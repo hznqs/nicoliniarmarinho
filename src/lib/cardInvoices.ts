@@ -30,9 +30,11 @@ export const addMonthsToMonth = (month: string, offset: number) => {
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`;
 };
 
-export const getCardInvoiceMonth = (purchaseDate: string, closingDay = 1) => {
+const normalizeCardDay = (day: number | undefined, fallback: number) => Math.min(Math.max(day || fallback, 1), 31);
+
+const getCardClosingMonth = (purchaseDate: string, closingDay = 1) => {
   const [year, monthNumber, day] = purchaseDate.split('-').map(Number);
-  const safeClosingDay = Math.min(Math.max(closingDay || 1, 1), daysInMonth(year, monthNumber));
+  const safeClosingDay = Math.min(normalizeCardDay(closingDay, 1), daysInMonth(year, monthNumber));
   const invoiceDate = new Date(year, monthNumber - 1, 1);
   if (day > safeClosingDay) {
     invoiceDate.setMonth(invoiceDate.getMonth() + 1);
@@ -40,10 +42,22 @@ export const getCardInvoiceMonth = (purchaseDate: string, closingDay = 1) => {
   return `${invoiceDate.getFullYear()}-${pad2(invoiceDate.getMonth() + 1)}`;
 };
 
+export const getCardInvoiceMonth = (purchaseDate: string, closingDay = 1, dueDay = 10) => {
+  const closingMonth = getCardClosingMonth(purchaseDate, closingDay);
+  const normalizedClosingDay = normalizeCardDay(closingDay, 1);
+  const normalizedDueDay = normalizeCardDay(dueDay, 10);
+  const dueMonthOffset = normalizedDueDay <= normalizedClosingDay ? 1 : 0;
+  return addMonthsToMonth(closingMonth, dueMonthOffset);
+};
+
 export const buildDateForMonthDay = (month: string, day = 1) => {
   const [year, monthNumber] = month.split('-').map(Number);
-  const safeDay = Math.min(Math.max(day || 1, 1), daysInMonth(year, monthNumber));
+  const safeDay = Math.min(normalizeCardDay(day, 1), daysInMonth(year, monthNumber));
   return `${year}-${pad2(monthNumber)}-${pad2(safeDay)}`;
+};
+
+export const getCardInvoiceDueDate = (purchaseDate: string, closingDay = 1, dueDay = 10) => {
+  return buildDateForMonthDay(getCardInvoiceMonth(purchaseDate, closingDay, dueDay), dueDay);
 };
 
 export const getCardPurchaseInstallments = <TCompra extends CardPurchase>(
@@ -53,7 +67,7 @@ export const getCardPurchaseInstallments = <TCompra extends CardPurchase>(
   if (!compra.cartaoId || compra.cartaoId !== cartao.id) return [];
 
   const parcelas = Math.max(1, Math.min(120, Math.trunc(Number(compra.parcelas || 1))));
-  const firstMonth = getCardInvoiceMonth(compra.data, cartao.fechamento || 1);
+  const firstMonth = getCardInvoiceMonth(compra.data, cartao.fechamento || 1, cartao.vencimento || 10);
   const totalCents = Math.round(Number(compra.valor || 0) * 100);
   const baseCents = Math.floor(totalCents / parcelas);
   const remainder = totalCents % parcelas;
